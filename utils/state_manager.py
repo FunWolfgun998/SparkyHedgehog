@@ -4,21 +4,23 @@ import stable_retro as retro
 import pygame
 import numpy as np
 import glob
+import config  # Importiamo il tuo config
 
-# Carica le info dal tuo config se possibile, o definiscile qui
-GAME_NAME = 'SonicTheHedgehog-Genesis-v0'
-START_STATE = 'GreenHillZone.Act1'
-GAME_PATH = os.path.join(os.path.dirname(retro.__file__), "data", "stable", GAME_NAME)
+# Usa la cartella definita nel config
+GAME_PATH = config.CUSTOM_CAPTURE_STATES_DIR
+os.makedirs(GAME_PATH, exist_ok=True)
 
 
 def get_next_index():
     files = glob.glob(os.path.join(GAME_PATH, "GHZ_Custom_*.state"))
+    if not files: return 1
     indices = [int(f.split('_')[-1].split('.')[0]) for f in files if "_" in f]
     return max(indices) + 1 if indices else 1
 
 
 def run_state_manager():
-    env = retro.make(game=GAME_NAME, state=START_STATE, render_mode="rgb_array")
+    # Inizializza con il primo stato disponibile o default
+    env = retro.make(game=config.GAME_NAME, state=config.STATE_NAME, render_mode="rgb_array")
     obs, _ = env.reset()
 
     pygame.init()
@@ -27,7 +29,8 @@ def run_state_manager():
     save_idx = get_next_index()
 
     print(f"--- SPARKY STATE MANAGER ---")
-    print(f"F5: Salva e Comprime | ESC: Esci. Prossimo indice: {save_idx}")
+    print(f"File salvati in: {GAME_PATH}")
+    print(f"F5: Salva | ESC: Esci. Prossimo indice: {save_idx}")
 
     while True:
         action = np.zeros(12, dtype=np.int8)
@@ -38,12 +41,11 @@ def run_state_manager():
                     path = os.path.join(GAME_PATH, f"GHZ_Custom_{save_idx}.state")
                     with gzip.open(path, 'wb') as f:
                         f.write(env.unwrapped.em.get_state())
-                    print(f"✅ Salvato: GHZ_Custom_{save_idx}.state")
+                    print(f"✅ Salvato in Custom States: GHZ_Custom_{save_idx}.state")
                     save_idx += 1
                 if event.key == pygame.K_ESCAPE: return
 
         keys = pygame.key.get_pressed()
-        # Mapping base: W,A,S,D + Space
         if keys[pygame.K_d]: action[7] = 1
         if keys[pygame.K_a]: action[6] = 1
         if keys[pygame.K_s]: action[5] = 1

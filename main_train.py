@@ -79,7 +79,7 @@ def main():
     print("🚀 PROGETTO AVVIATO. Clicca sulla finestrella 'CONTROLLO' e premi 'V' per il video.")
 
     model.learn(
-        total_timesteps=50_000_000,
+        total_timesteps=60_000_000,
         callback=[checkpoint_callback, vision_callback],
         tb_log_name="SparkyRun_RAM",
         reset_num_timesteps=False

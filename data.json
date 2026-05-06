@@ -10,11 +10,11 @@
     "lives": {"address": 16776722, "type": "|u1"},
     "rings": {"address": 16776736, "type": ">u2"},
     "score": {"address": 16776742, "type": ">u4"},
-
+    "act": {"address": 16776721, "type": "|u1"},
+    "zone": {"address": 16776720, "type": "|u1"},
     "boss_hp": {"address": 16764958, "type": "|u1"},
     "boss_x": {"address": 16764936, "type": ">i2"},
     "boss_y": {"address": 16764940, "type": ">i2"},
-
     "obj1_id": {"address": 16764992, "type": "|u1"}, "obj1_x": {"address": 16765000, "type": ">i2"}, "obj1_y": {"address": 16765004, "type": ">i2"},
     "obj2_id": {"address": 16765056, "type": "|u1"}, "obj2_x": {"address": 16765064, "type": ">i2"}, "obj2_y": {"address": 16765068, "type": ">i2"},
     "obj3_id": {"address": 16765120, "type": "|u1"}, "obj3_x": {"address": 16765128, "type": ">i2"}, "obj3_y": {"address": 16765132, "type": ">i2"},

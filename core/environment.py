@@ -12,38 +12,37 @@ from core.wrappers import SparkyDiscretizer, SonicRAMWrapper, SparkyReward
 
 
 def inject_data_json():
+    """Copia data.json e scenario.json nella cartella di stable-retro"""
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    source_path = os.path.join(base_path, "data.json")
     retro_path = os.path.join(os.path.dirname(retro.__file__), "data", "stable", config.GAME_NAME)
-    dest_path = os.path.join(retro_path, "data.json")
-    if os.path.exists(source_path):
-        shutil.copyfile(source_path, dest_path)
-    else:
-        print(f"⚠️ ERRORE: data.json non trovato in {source_path}")
+
+    for filename in ["data.json", "scenario.json"]:
+        source = os.path.join(base_path, filename)
+        dest = os.path.join(retro_path, filename)
+        if os.path.exists(source):
+            shutil.copyfile(source, dest)
+            print(f"✅ Iniettato: {filename}")
+        else:
+            # Crea un file scenario vuoto se manca
+            if filename == "scenario.json":
+                with open(dest, 'w') as f: f.write('{"reward": {"variables": {}}}')
 
 
 inject_data_json()
 
 
 class RandomResetWrapper(gym.Wrapper):
-    """Wrapper che cambia lo stato del gioco a ogni reset"""
-
     def __init__(self, env, states):
         super().__init__(env)
         self.states = states
 
     def reset(self, **kwargs):
-        # Scegliamo uno stato a caso dalla lista
         new_state = random.choice(self.states)
-
-        # Carichiamo lo stato. Usiamo 'DEFAULT' invece di 'GZ'
-        # Se desse ancora errore, scrivi semplicemente: self.env.unwrapped.load_state(new_state)
+        # CORREZIONE: Usiamo retro.State.DEFAULT o passiamo solo il nome
         try:
             self.env.unwrapped.load_state(new_state, retro.State.DEFAULT)
-        except Exception as e:
-            # Fallback se la tua versione di retro preferisce solo il nome
+        except:
             self.env.unwrapped.load_state(new_state)
-
         return self.env.reset(**kwargs)
 
 

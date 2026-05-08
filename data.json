@@ -12,6 +12,7 @@
     "score": {"address": 16776742, "type": ">u4"},
     "act": {"address": 16776721, "type": "|u1"},
     "zone": {"address": 16776720, "type": "|u1"},
+    "level_end_bonus": {"address": 16775126, "type": "|u1"},
     "boss_hp": {"address": 16764958, "type": "|u1"},
     "boss_x": {"address": 16764936, "type": ">i2"},
     "boss_y": {"address": 16764940, "type": ">i2"},

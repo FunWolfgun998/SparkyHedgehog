@@ -1,36 +1,49 @@
+import sys
 import os
+
+# --- FIX PERCORSI ---
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 import gzip
 import stable_retro as retro
 import pygame
 import numpy as np
-import glob
-import config  # Importiamo il tuo config
+import config
 
-# Usa la cartella definita nel config
+# Usa la cartella catturati dal config
 GAME_PATH = config.CUSTOM_CAPTURE_STATES_DIR
 os.makedirs(GAME_PATH, exist_ok=True)
 
 
 def get_next_index():
+    import glob
     files = glob.glob(os.path.join(GAME_PATH, "GHZ_Custom_*.state"))
     if not files: return 1
-    indices = [int(f.split('_')[-1].split('.')[0]) for f in files if "_" in f]
+    indices = []
+    for f in files:
+        try:
+            num = int(os.path.basename(f).split('_')[2].split('.')[0])
+            indices.append(num)
+        except:
+            continue
     return max(indices) + 1 if indices else 1
 
 
 def run_state_manager():
-    # Inizializza con il primo stato disponibile o default
     env = retro.make(game=config.GAME_NAME, state=config.STATE_NAME, render_mode="rgb_array")
     obs, _ = env.reset()
 
     pygame.init()
-    screen = pygame.display.set_mode((obs.shape[1] * 3, obs.shape[0] * 3))
+    scale = 3
+    screen = pygame.display.set_mode((obs.shape[1] * scale, obs.shape[0] * scale))
     clock = pygame.time.Clock()
     save_idx = get_next_index()
 
-    print(f"--- SPARKY STATE MANAGER ---")
-    print(f"File salvati in: {GAME_PATH}")
-    print(f"F5: Salva | ESC: Esci. Prossimo indice: {save_idx}")
+    print(f"--- 🎮 SPARKY STATE MANAGER ---")
+    print(f"Salvataggio in: {GAME_PATH}")
+    print(f"F5: Salva stato | ESC: Esci")
 
     while True:
         action = np.zeros(12, dtype=np.int8)
@@ -38,10 +51,11 @@ def run_state_manager():
             if event.type == pygame.QUIT: return
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F5:
-                    path = os.path.join(GAME_PATH, f"GHZ_Custom_{save_idx}.state")
+                    state_name = f"GHZ_Custom_{save_idx}.state"
+                    path = os.path.join(GAME_PATH, state_name)
                     with gzip.open(path, 'wb') as f:
                         f.write(env.unwrapped.em.get_state())
-                    print(f"✅ Salvato in Custom States: GHZ_Custom_{save_idx}.state")
+                    print(f"✅ STATO SALVATO: {state_name}")
                     save_idx += 1
                 if event.key == pygame.K_ESCAPE: return
 
@@ -54,8 +68,9 @@ def run_state_manager():
         obs, _, term, trunc, _ = env.step(action)
         if term or trunc: env.reset()
 
-        surf = pygame.surfarray.make_surface(np.transpose(obs, (1, 0, 2)))
-        screen.blit(pygame.transform.scale(surf, (obs.shape[1] * 3, obs.shape[0] * 3)), (0, 0))
+        image = np.transpose(obs, (1, 0, 2))
+        surf = pygame.surfarray.make_surface(image)
+        screen.blit(pygame.transform.scale(surf, (obs.shape[1] * scale, obs.shape[0] * scale)), (0, 0))
         pygame.display.flip()
         clock.tick(60)
 

@@ -17,7 +17,7 @@ from core.wrappers import SparkyDiscretizer, SonicRAMWrapper
 import config
 
 # --- CONFIGURAZIONE ---
-MODEL_NAME = "Sparky_run_10_261000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
+MODEL_NAME = "Sparky_run_2_110000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
 MODEL_PATH = os.path.join(config.SAVE_PATH, MODEL_NAME)
 TEST_STATE = "GreenHillZone.Act1"
 

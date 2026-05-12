@@ -34,9 +34,7 @@ def main():
         net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
     )
 
-    # 🚨 NOTA: Poiché l'Observation Space è cambiato (188 input),
-    # non puoi caricare modelli vecchi. Devi partire da zero!
-    RESUME_MODEL = "models/Sparky 3_0/Sparky_run_2_117000000.zip"
+    RESUME_MODEL = "models/Sparky 4_0/Sparky_run_1_000000.zip"
 
     if os.path.exists(RESUME_MODEL) and RESUME_MODEL != "":
         print(f"🔄 CARICAMENTO MODELLO: {RESUME_MODEL}")

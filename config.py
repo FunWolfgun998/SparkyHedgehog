@@ -7,11 +7,11 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 GAME_NAME = 'SonicTheHedgehog-Genesis-v0'
 STATE_NAME = 'GreenHillZone.Act1'
 
-LOG_DIR = os.path.join(ROOT_DIR, "logs/Sparky 3_0")
+LOG_DIR = os.path.join(ROOT_DIR, "logs/Sparky 4_0")
 VIDEO_DIR = os.path.join(ROOT_DIR, "utils/video_models")
 CUSTOM_STATES_DIR = os.path.join(ROOT_DIR, "train_states")
 CUSTOM_CAPTURE_STATES_DIR = os.path.join(ROOT_DIR, "utils/captured_states")
-SAVE_PATH = os.path.join(ROOT_DIR, "models/Sparky 3_0")
+SAVE_PATH = os.path.join(ROOT_DIR, "models/Sparky 4_0")
 SAVE_TEXT_LOGS = True
 
 # --- AUTOMAZIONE RUN (TensorBoard Continuity) ---

@@ -4,10 +4,11 @@ import numpy as np
 import math
 from stable_baselines3.common.callbacks import BaseCallback
 from core.logger import sparky_logger
+from core.hud import SparkyHUD
+import config
+
 
 class SparkyRoundCheckpoint(BaseCallback):
-    """Salva il modello ogni milione di passi globali in modo preciso."""
-
     def __init__(self, save_freq, save_path, run_number, verbose=1):
         super().__init__(verbose)
         self.save_freq = save_freq
@@ -15,12 +16,9 @@ class SparkyRoundCheckpoint(BaseCallback):
         self.run_number = run_number
 
     def _on_step(self) -> bool:
-        # Usiamo il conteggio globale dei passi (num_timesteps)
         total_steps = self.model.num_timesteps
-
-        # Calcoliamo se siamo passati sopra un multiplo di 'save_freq'
-        # Usiamo config.NUM_ENVS come offset per catturare il momento esatto in sistemi paralleli
-        if (total_steps // self.save_freq) > ((total_steps - 30) // self.save_freq):
+        offset = config.NUM_ENVS
+        if (total_steps // self.save_freq) > ((total_steps - offset) // self.save_freq):
             rounded = (total_steps // self.save_freq) * self.save_freq
             fname = f"Sparky_run_{self.run_number}_{rounded}.zip"
             save_loc = os.path.join(self.save_path, fname)
@@ -30,46 +28,73 @@ class SparkyRoundCheckpoint(BaseCallback):
         return True
 
 
-
-
 class ShallyTurboCallback(BaseCallback):
     def __init__(self, render_freq=30, verbose=0):
         super().__init__(verbose)
         self.render_freq = render_freq
         self.show_vision = False
         self.smooth_mode = False
+        self.hud = SparkyHUD()  # Gestisce l'attivazione/disattivazione dei pannelli
 
-        self.ctrl_img = np.zeros((160, 300, 3), dtype=np.uint8)
-        cv2.putText(self.ctrl_img, "V = Grid (Veloce)", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        cv2.putText(self.ctrl_img, "S = Fluido (LENTO!)", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        cv2.putText(self.ctrl_img, "P = Toggle Logs", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 100, 100), 2)
+        # Finestra 1: CONTROLLO (Sempre piccola)
+        self.ctrl_img = np.zeros((200, 320, 3), dtype=np.uint8)
+        cv2.putText(self.ctrl_img, "V = ON/OFF Griglia", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        cv2.putText(self.ctrl_img, "S = Fluido (LENTO)", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        cv2.putText(self.ctrl_img, "H = Toggle HUD", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
+        cv2.putText(self.ctrl_img, "P = Toggle Logs", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 100, 100), 2)
 
     def _on_step(self):
+        # Mostra sempre la finestra di controllo
         cv2.imshow("CONTROLLO", self.ctrl_img)
         key = cv2.waitKey(1) & 0xFF
 
+        # Gestione Tasti
         if key == ord('v'):
-            self.show_vision, self.smooth_mode = not self.show_vision , False
-        elif key == ord('s'):
-            self.smooth_mode, self.show_vision = not self.smooth_mode, not self.smooth_mode
-        elif key == ord('p'): #print management
+            self.show_vision = not self.show_vision
+
+        if key == ord('s'):
+            self.smooth_mode, self.show_vision = not self.smooth_mode, not self.show_vision
+
+        if key == ord('h'):
+            self.hud.toggle()
+
+        if key == ord('p'):
             sparky_logger.toggle_performance_mode()
 
         if self.show_vision:
             freq = 1 if self.smooth_mode else self.render_freq
             if self.n_calls % freq == 0:
                 imgs = self.training_env.get_images()
+                infos = self.locals.get('infos', [])  # Recupera le info per l'HUD
+
                 if imgs is not None and len(imgs) > 0:
                     num_envs = len(imgs)
                     cols = math.ceil(math.sqrt(num_envs))
                     rows = math.ceil(num_envs / cols)
-                    m_width, m_height = 320, 224
-                    grid_img = np.zeros((rows * m_height, cols * m_width, 3), dtype=np.uint8)
+
+                    # Definiamo la dimensione di ogni singolo Sonic nella griglia
+                    # Se l'HUD è attivo usiamo la scala del HUD, altrimenti originale
+                    m_w, m_h = 320, 224
+
+                    grid_img = np.zeros((rows * m_h, cols * m_w, 3), dtype=np.uint8)
+
                     for i, img in enumerate(imgs):
-                        sf = cv2.resize(img, (m_width, m_height), interpolation=cv2.INTER_NEAREST)
-                        sf = cv2.cvtColor(sf, cv2.COLOR_RGB2BGR)
+                        current_info = infos[i] if i < len(infos) else {}
+
+                        # 1. Applica HUD se abilitato (restituisce il frame elaborato)
+                        # Nota: hud.overlay si occupa di fare il resize interno
+                        processed = self.hud.overlay(img, current_info)
+
+                        # 2. Converte in BGR per OpenCV
+                        processed_bgr = cv2.cvtColor(processed, cv2.COLOR_RGB2BGR)
+
+                        # 3. Lo rimpicciolisce per farlo stare nella griglia da 30
+                        # (Altrimenti la finestra sarebbe di 5000 pixel)
+                        sf = cv2.resize(processed_bgr, (m_w, m_h), interpolation=cv2.INTER_AREA)
+
                         r, c = i // cols, i % cols
-                        grid_img[r * m_height:(r + 1) * m_height, c * m_width:(c + 1) * m_width] = sf
+                        grid_img[r * m_h:(r + 1) * m_h, c * m_w:(c + 1) * m_w] = sf
+
                     cv2.imshow("Multi-Sonic Monitor", grid_img)
         else:
             cv2.destroyWindow("Multi-Sonic Monitor")

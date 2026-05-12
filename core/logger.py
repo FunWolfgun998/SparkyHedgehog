@@ -35,7 +35,7 @@ class PrintManager:
 
         # 1. Stampa su console SOLO se non siamo in modalità performance
         if self.console_enabled:
-            print(final_msg)
+            print(final_msg, flush=True)
 
         # 2. Salva su disco SEMPRE (se abilitato da config)
         if self.file_enabled:

@@ -14,10 +14,11 @@ import stable_retro as retro
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from core.wrappers import SparkyDiscretizer, SonicRAMWrapper
+from core.hud import SparkyHUD
 import config
 
 # --- CONFIGURAZIONE ---
-MODEL_NAME = "Sparky_run_2_110000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
+MODEL_NAME = "Sparky_run_1_4000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
 MODEL_PATH = os.path.join(config.SAVE_PATH, MODEL_NAME)
 TEST_STATE = "GreenHillZone.Act1"
 
@@ -55,6 +56,7 @@ def test():
 
     obs = env.reset()
     video_writer = None
+    hud = SparkyHUD()
     scale = 3
 
     print("\nPremere 'ESC' sulla finestra video per interrompere e salvare.")
@@ -65,25 +67,26 @@ def test():
         obs, reward, done, info = env.step(action)
         current_info = info[0]
 
-        frame = env.render()
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        frame = cv2.resize(frame, (frame.shape[1] * scale, frame.shape[0] * scale), interpolation=cv2.INTER_NEAREST)
+        # Estrai l'immagine grezza
+        raw_frame = env.render()
 
-        # HUD
-        cv2.putText(frame, f"X: {current_info.get('x', 0)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(frame, f"Eggman HP: {current_info.get('boss_hp', 8)}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        # Applica l'HUD professionale!
+        frame_with_hud = hud.overlay(raw_frame, current_info)
 
-        # Video Recorder
+        # Converti per OpenCV
+        frame_bgr = cv2.cvtColor(frame_with_hud, cv2.COLOR_RGB2BGR)
+
+        # Video Recorder (Ora registra il frame con l'HUD ad alta risoluzione)
         if SAVE_VIDEO and video_writer is None:
-            h, w, _ = frame.shape
+            h, w, _ = frame_bgr.shape
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             video_writer = cv2.VideoWriter(VIDEO_NAME, fourcc, 60.0, (w, h))
             print(f"🎥 Registrazione in corso in: {config.VIDEO_DIR}")
 
         if SAVE_VIDEO:
-            video_writer.write(frame)
+            video_writer.write(frame_bgr)
 
-        cv2.imshow("Shally Play Test", frame)
+        cv2.imshow("Shally Play Test", frame_bgr)
 
         if cv2.waitKey(1) & 0xFF == 27:
             break

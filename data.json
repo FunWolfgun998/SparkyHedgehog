@@ -19,6 +19,7 @@
     "zone": {"address": 16776720, "type": "|u1"},
     "act": {"address": 16776721, "type": "|u1"},
     "lives": {"address": 16776722, "type": "|u1"},
+    "lamppost_id": {"address": 16776752, "type": "|u1"},
     "rings": {"address": 16776736, "type": ">u2"},
     "score": {"address": 16776742, "type": ">u4"},
     "shield": {"address": 16776748, "type": "|u1"},

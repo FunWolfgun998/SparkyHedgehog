@@ -22,7 +22,7 @@ class SparkyReward(gym.Wrapper):
     PEN_DAMAGE_BASE = 50.0
     PEN_RING_MULT = 15.0
     PEN_JUMP_LOOP = -20.0
-    PEN_BACKTRACK = -2.0
+    PEN_BACKTRACK = -5.0
     PEN_STUCK = -50.0
     PEN_DEATH_BASE = 200.0
     PEN_GLITCH_BASE = 300.0
@@ -54,6 +54,10 @@ class SparkyReward(gym.Wrapper):
     def reset(self, **kwargs):
         self._init_vars()
         return self.env.reset(**kwargs)
+
+    def set_logger_state(self, state: bool):
+        """Metodo chiamato dal processo padre tramite env_method"""
+        sparky_logger.console_enabled = state
 
     def step(self, action):
         obs, reward, term, trunc, info = self.env.step(action)
@@ -102,7 +106,8 @@ class SparkyReward(gym.Wrapper):
         # --- MODULO 2: Gestione Anelli e Danni ---
         if c_rings == 0:
             step_reward += self.PEN_VULNERABLE
-        elif c_rings < self.prev_rings:
+        elif c_rings > self.prev_rings:
+
             if self.prev_rings == 0:
                 # Diamo il bonus speciale per il primo
                 step_reward += self.REW_FIRST_RING
@@ -212,8 +217,7 @@ class SparkyReward(gym.Wrapper):
 
         # --- MODULO 9: Annegamento (Labyrinth Zone) ---
         curr_air = info.get('air_timer', 1800)
-        is_underwater = curr_y > info.get('water_level', 4000)
-
+        is_underwater = 1.0 if (status_byte & 64) else 0.0
         if is_underwater:
             if curr_air < 720:  # Sotto i 12 secondi, panico indotto
                 step_reward -= 0.5

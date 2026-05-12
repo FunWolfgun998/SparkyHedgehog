@@ -34,32 +34,42 @@ class ShallyTurboCallback(BaseCallback):
         self.render_freq = render_freq
         self.show_vision = False
         self.smooth_mode = False
-        self.hud = SparkyHUD()  # Gestisce l'attivazione/disattivazione dei pannelli
+        self.logs_on = True  # Stato iniziale dei log
+        self.hud = SparkyHUD()
 
-        # Finestra 1: CONTROLLO (Sempre piccola)
         self.ctrl_img = np.zeros((200, 320, 3), dtype=np.uint8)
         cv2.putText(self.ctrl_img, "V = ON/OFF Griglia", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.putText(self.ctrl_img, "S = Fluido (LENTO)", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         cv2.putText(self.ctrl_img, "H = Toggle HUD", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
-        cv2.putText(self.ctrl_img, "P = Toggle Logs", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 100, 100), 2)
+        cv2.putText(self.ctrl_img, "P = Toggle Logs", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 100, 255), 2)
 
     def _on_step(self):
-        # Mostra sempre la finestra di controllo
         cv2.imshow("CONTROLLO", self.ctrl_img)
         key = cv2.waitKey(1) & 0xFF
 
-        # Gestione Tasti
         if key == ord('v'):
             self.show_vision = not self.show_vision
+            if not self.show_vision:
+                try:
+                    cv2.destroyWindow("Multi-Sonic Monitor")
+                except:
+                    pass
 
         if key == ord('s'):
-            self.smooth_mode, self.show_vision = not self.smooth_mode, not self.show_vision
+            # Se attivo il fluido, attivo anche la visione automaticamente
+            self.smooth_mode = not self.smooth_mode
+            if self.smooth_mode: self.show_vision = True
 
         if key == ord('h'):
             self.hud.toggle()
 
         if key == ord('p'):
-            sparky_logger.toggle_performance_mode()
+            self.logs_on = not self.logs_on
+            # Comandiamo a tutti gli ambienti di cambiare lo stato del loro logger
+            self.training_env.env_method("set_logger_state", self.logs_on)
+
+            stato = "ATTIVI" if self.logs_on else "DISABILITATI (Performance Mode 🚀)"
+            print(f"\n⚙️ [COMMAND CENTER] Log a schermo: {stato}\n", flush=True)
 
         if self.show_vision:
             freq = 1 if self.smooth_mode else self.render_freq

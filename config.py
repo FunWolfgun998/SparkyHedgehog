@@ -5,7 +5,7 @@ import stable_retro as retro
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 GAME_NAME = 'SonicTheHedgehog-Genesis-v0'
-STATE_NAME = 'GreenHillZone.Act1'
+STATE_NAME = 'GreenHillZone.Act3'
 
 LOG_DIR = os.path.join(ROOT_DIR, "logs/Sparky 4_0")
 VIDEO_DIR = os.path.join(ROOT_DIR, "utils/video_models")

@@ -18,7 +18,7 @@ from core.hud import SparkyHUD
 import config
 
 # --- CONFIGURAZIONE ---
-MODEL_NAME = "Sparky_run_1_4000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
+MODEL_NAME = "Sparky_run_3_50000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
 MODEL_PATH = os.path.join(config.SAVE_PATH, MODEL_NAME)
 TEST_STATE = "GreenHillZone.Act1"
 

@@ -34,7 +34,7 @@ def main():
         net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
     )
 
-    RESUME_MODEL = "models/Sparky 4_0/Sparky_run_3_52000000.zip"
+    RESUME_MODEL = ""
 
     if os.path.exists(RESUME_MODEL) and RESUME_MODEL != "":
         print(f"🔄 CARICAMENTO MODELLO: {RESUME_MODEL}")

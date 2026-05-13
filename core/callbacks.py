@@ -2,9 +2,11 @@ import os
 import cv2
 import numpy as np
 import math
+import time
 from stable_baselines3.common.callbacks import BaseCallback
 from core.hud import SparkyHUD
 import config
+
 
 class SparkyRoundCheckpoint(BaseCallback):
     def __init__(self, save_freq, save_path, run_number, verbose=1):
@@ -25,55 +27,150 @@ class SparkyRoundCheckpoint(BaseCallback):
                 print(f"\n💾 [CHECKPOINT] Modello salvato a {rounded} passi: {fname}")
         return True
 
-class ShallyTurboCallback(BaseCallback):
-    def __init__(self, render_freq=30, verbose=0):
-        super().__init__(verbose)
-        self.render_freq = render_freq
-        self.show_vision = True # Attivata di default per il debug
-        self.smooth_mode = False
-        self.hud = SparkyHUD()
-        self.logs_on = True
 
-        # Finestra di controllo
-        self.ctrl_img = np.zeros((200, 320, 3), dtype=np.uint8)
-        cv2.putText(self.ctrl_img, "V = ON/OFF Griglia", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        cv2.putText(self.ctrl_img, "H = Toggle HUD", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
+class SparkyDirectorCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.hud = SparkyHUD()
+
+        # --- STATI DEL DIRETTORE ---
+        self.monitor_open = False  # Tasto M: Apre/Chiude il monitor
+        self.fluid_mode = False  # Tasto F: 60 FPS reali vs Max Speed
+        self.grid_mode = 2  # Tasto G: 1=1x1, 2=2x2, 3=3x3
+        self.current_page = 0  # Tasti N/B: Naviga tra gli env
+        self.hud_enabled = True  # Tasto H: Toggle HUD
+
+        self.num_envs = config.NUM_ENVS
+
+        # Inizializza la finestra di controllo
+        cv2.namedWindow("DIRECTOR CONTROL", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("DIRECTOR CONTROL", 400, 300)
+
+    def _get_grid_settings(self):
+        envs_per_page = self.grid_mode * self.grid_mode
+        total_pages = math.ceil(self.num_envs / envs_per_page)
+        # Sicurezza per evitare pagine inesistenti se si cambia griglia
+        if self.current_page >= total_pages:
+            self.current_page = total_pages - 1
+        return envs_per_page, total_pages
+
+    def _draw_control_panel(self):
+        panel = np.zeros((300, 400, 3), dtype=np.uint8)
+        envs_per_page, total_pages = self._get_grid_settings()
+
+        # Colori dinamici
+        c_on = (0, 255, 0)
+        c_off = (50, 50, 255)
+        c_text = (255, 255, 255)
+
+        cv2.putText(panel, "=== SPARKY DIRECTOR ===", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+        # Status
+        m_str = "APERTO" if self.monitor_open else "CHIUSO"
+        m_col = c_on if self.monitor_open else c_off
+        cv2.putText(panel, f"M - Monitor: {m_str}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, m_col, 2)
+
+        f_str = "60 FPS (Lento)" if self.fluid_mode else "MAX SPEED"
+        f_col = c_on if self.fluid_mode else c_off
+        cv2.putText(panel, f"F - Modalita': {f_str}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, f_col, 2)
+
+        h_str = "ON" if self.hud_enabled else "OFF"
+        h_col = c_on if self.hud_enabled else c_off
+        cv2.putText(panel, f"H - HUD Telemetria: {h_str}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, h_col, 2)
+
+        cv2.putText(panel, f"G - Griglia: {self.grid_mode}x{self.grid_mode}", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    c_text, 2)
+
+        page_info = f"Pagina: {self.current_page + 1}/{total_pages} (Env {self.current_page * envs_per_page}-{(self.current_page + 1) * envs_per_page - 1})"
+        cv2.putText(panel, f"N/B - {page_info}", (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 165, 0), 1)
+
+        cv2.putText(panel, "SPACE - Screenshot Griglia", (10, 230), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+        return panel
+
+    def _handle_inputs(self, delay):
+        key = cv2.waitKey(delay) & 0xFF
+        if key == ord('m'):
+            self.monitor_open = not self.monitor_open
+            if not self.monitor_open:
+                try:
+                    cv2.destroyWindow("MONITOR")
+                except:
+                    pass
+        if key == ord('f'): self.fluid_mode = not self.fluid_mode
+        if key == ord('h'): self.hud_enabled = not self.hud_enabled
+
+        if key == ord('g'):
+            self.grid_mode += 1
+            if self.grid_mode > 3: self.grid_mode = 1
+            self._get_grid_settings()  # Ricalcola la pagina sicura
+
+        envs_per_page, total_pages = self._get_grid_settings()
+        if key == ord('n'): self.current_page = (self.current_page + 1) % total_pages
+        if key == ord('b'): self.current_page = (self.current_page - 1) % total_pages
+
+        return key
 
     def _on_step(self):
-        cv2.imshow("CONTROLLO", self.ctrl_img)
-        key = cv2.waitKey(1) & 0xFF
+        # 1. Calcolo del Delay e Frequenza
+        # Se fluid mode ON: aspetta 16ms (60 FPS) e renderizza ogni frame.
+        # Se fluid mode OFF: non aspetta (1ms) e renderizza solo ogni 50 frame per risparmiare IPC.
+        delay = 16 if self.fluid_mode and self.monitor_open else 1
+        render_freq = 1 if self.fluid_mode else 50
 
-        if key == ord('v'): self.show_vision = not self.show_vision
-        if key == ord('h'): self.hud.toggle()
+        # Disegna la finestra di controllo sempre
+        cv2.imshow("DIRECTOR CONTROL", self._draw_control_panel())
 
-        if self.show_vision:
-            if self.n_calls % self.render_freq == 0:
-                imgs = self.training_env.get_images()
-                infos = self.locals.get('infos', [])
+        # Gestisce i tasti premuti
+        key = self._handle_inputs(delay)
 
-                if imgs is not None and len(imgs) > 0:
-                    num_envs = len(imgs)
-                    cols = math.ceil(math.sqrt(num_envs))
-                    rows = math.ceil(num_envs / cols)
+        # 2. Logica di Rendering del Monitor Principale
+        if self.monitor_open and (self.n_calls % render_freq == 0 or key == 32):
+            # Otteniamo le immagini da VecEnv (Purtroppo SB3 le estrae tutte e 30, ma noi calcoliamo solo quelle che vediamo)
+            all_imgs = self.training_env.get_images()
+            infos = self.locals.get('infos', [])
 
-                    # --- MODIFICA RISOLUZIONE ---
-                    # m_w e m_h ora sono 640x448 (DOPPIO rispetto all'originale 320x224)
-                    m_w, m_h = 640, 448
+            envs_per_page, _ = self._get_grid_settings()
+            start_idx = self.current_page * envs_per_page
+            end_idx = min(start_idx + envs_per_page, self.num_envs)
 
-                    grid_img = np.zeros((rows * m_h, cols * m_w, 3), dtype=np.uint8)
+            # Parametri Risoluzione. 640x448 a schermo per un env con HUD è ottimale
+            res_w, res_h = 640, 448
 
-                    for i, img in enumerate(imgs):
-                        current_info = infos[i] if i < len(infos) else {}
+            # Crea tela nera per la griglia
+            grid_img = np.zeros((self.grid_mode * res_h, self.grid_mode * res_w, 3), dtype=np.uint8)
 
-                        # Ottieni l'immagine con HUD (che è 960x672 internamente)
-                        processed = self.hud.overlay(img, current_info)
-                        processed_bgr = cv2.cvtColor(processed, cv2.COLOR_RGB2BGR)
+            self.hud.enabled = self.hud_enabled
 
-                        # Ridimensiona alla nostra nuova dimensione leggibile (640x448)
-                        sf = cv2.resize(processed_bgr, (m_w, m_h), interpolation=cv2.INTER_LINEAR)
+            # Loop SOLO sugli ambienti della pagina corrente
+            for i, env_idx in enumerate(range(start_idx, end_idx)):
+                raw_img = all_imgs[env_idx]
+                info = infos[env_idx] if env_idx < len(infos) else {}
 
-                        r, c = i // cols, i % cols
-                        grid_img[r * m_h:(r + 1) * m_h, c * m_w:(c + 1) * m_w] = sf
+                # Applica HUD se abilitato
+                processed = self.hud.overlay(raw_img, info)
+                processed_bgr = cv2.cvtColor(processed, cv2.COLOR_RGB2BGR)
 
-                    cv2.imshow("Multi-Sonic Monitor", grid_img)
+                # FIX QUALITA' TESTO: Usiamo INTER_AREA per i rimpicciolimenti della griglia
+                resized = cv2.resize(processed_bgr, (res_w, res_h), interpolation=cv2.INTER_AREA)
+
+                # Inserisci nella griglia
+                row = i // self.grid_mode
+                col = i % self.grid_mode
+                grid_img[row * res_h: (row + 1) * res_h, col * res_w: (col + 1) * res_w] = resized
+
+                # Stampa l'ID dell'ambiente
+                #cv2.putText(grid_img, f"ENV: {env_idx}", (col * res_w + 10, row * res_h + 25), cv2.FONT_HERSHEY_SIMPLEX,
+                #            0.7, (0, 255, 0), 2)
+
+            cv2.imshow("MONITOR", grid_img)
+
+            # 3. Screenshot (Barra Spaziatrice)
+            if key == 32:
+                timestamp = time.strftime("%H%M%S")
+                filename = os.path.join(config.SCREENSHOT_DIR,
+                                        f"scr_{config.CURRENT_RUN_NAME}_stp{self.num_timesteps}_{timestamp}.png")
+                cv2.imwrite(filename, grid_img)
+                print(f"\n📸 [DIRECTOR] Screenshot salvato: {filename}\n")
+
         return True

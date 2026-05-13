@@ -103,7 +103,7 @@ class SonicRAMWrapper(gym.Wrapper):
 
         # Riempimento finale del vettore (Padding tecnico per PPO)
         while len(radar_ai) < self.NUM_RADAR_OBJECTS:
-            radar_ai.append({'id': 0, 'dx': 0, 'dy': 0, 'l': 0, 'e': 0, 'ph': 0, 'v': 0, 'it': 0, 'p': 0})
+            radar_ai.append({'id': 0, 'dx': 0, 'dy': 0, 'dist':999, 'l': 0, 'e': 0, 'ph': 0, 'v': 0, 'it': 0, 'p': 0})
 
         for o in radar_ai:
             ram.extend([o['id'] / 255.0, o['dx'], o['dy'], o['l'], o['e'], o['ph'], o['v'], o['it'], o['p']])

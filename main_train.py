@@ -34,12 +34,14 @@ def main():
         net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
     )
 
-    RESUME_MODEL = "Sparky_run_8_4000000.zip"
+    MODEL_NAME = "Sparky_run_1_2000000.zip"
+    RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
-    if os.path.exists(RESUME_MODEL) and RESUME_MODEL != "":
+    if os.path.exists(RESUME_MODEL):
         print(f"🔄 CARICAMENTO MODELLO: {RESUME_MODEL}")
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda")
     else:
+        print(f"⚠️ MODELLO NON TROVATO a: {RESUME_MODEL}")
         print("🆕 CREAZIONE NUOVA RETE NEURALE (188 Inputs)")
         model = PPO(
             "MlpPolicy",
@@ -62,7 +64,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=80_000_000,
+        total_timesteps=8_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

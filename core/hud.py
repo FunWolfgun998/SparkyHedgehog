@@ -6,101 +6,51 @@ class SparkyHUD:
     def __init__(self):
         self.enabled = True
         self.scale = 3
-        self.c_text = (255, 255, 255)
-        self.c_true = (0, 255, 0)
-        self.c_false = (50, 50, 50)
-        self.c_warn = (0, 0, 255)
-
-    def toggle(self):
-        self.enabled = not self.enabled
-
-    def _draw_bool(self, img, x, y, label, state):
-        color = self.c_true if state else self.c_false
-        cv2.rectangle(img, (x, y - 12), (x + 12, y), color, -1)
-        cv2.putText(img, label, (x + 20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.c_text, 1)
-
-    def _draw_bar(self, img, x, y, label, value, color):
-        cv2.putText(img, label, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, self.c_text, 1)
-        cv2.rectangle(img, (x + 80, y - 10), (x + 180, y), self.c_false, -1)
-        cv2.rectangle(img, (x + 80, y - 10), (x + 80 + int(value * 100), y), color, -1)
+        self.c_text, self.c_true, self.c_warn = (255, 255, 255), (0, 255, 0), (0, 0, 255)
+        self.OBJ_NAMES = {
+            14: "Checkpoint", 34: "Buzz Bomber", 37: "Ring", 38: "TV Monitor",
+            40: "Motobug", 54: "Spikes", 65: "Spring", 61: "Eggman"  # Aggiungi altri se necessario
+        }
 
     def overlay(self, frame, info):
-        if not self.enabled:
-            return cv2.resize(frame, (frame.shape[1] * self.scale, frame.shape[0] * self.scale),
-                              interpolation=cv2.INTER_NEAREST)
+        if not self.enabled: return cv2.resize(frame, (frame.shape[1] * 3, frame.shape[0] * 3))
 
         h, w = frame.shape[:2]
-        img = cv2.resize(frame, (w * self.scale, h * self.scale), interpolation=cv2.INTER_NEAREST)
+        img = cv2.resize(frame, (w * 3, h * 3), interpolation=cv2.INTER_NEAREST)
         H, W = img.shape[:2]
 
+        # Scurimento pannelli
         overlay = img.copy()
-        cv2.rectangle(overlay, (0, 0), (220, H), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (0, 0), (240, H), (0, 0, 0), -1)
         cv2.rectangle(overlay, (W - 270, 0), (W, H), (0, 0, 0), -1)
-        img = cv2.addWeighted(overlay, 0.65, img, 0.35, 0)
+        img = cv2.addWeighted(overlay, 0.7, img, 0.3, 0)
 
-        # --- PANNELLO SINISTRO ---
-        cv2.putText(img, "TELEMETRIA AI", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        y = 60
-        stats = [
-            f"Speed: {info.get('ground_speed', 0)}", f"Angle: {info.get('angle', 0)}",
-            f"Rings: {info.get('rings', 0)}", f"Air: {info.get('air_timer', 1800)}"
+        # --- PANNELLO SINISTRO (BASE 24) ---
+        base_data = info.get('ai_input_vector', [0] * 24)
+        cv2.putText(img, "TELEMETRIA IA (24)", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        labels = [
+            "X Norm", "Y Norm", "VelX", "VelY", "G-Speed", "Angle", "Rings?", "Air", "PitDist",
+            "Left", "Air", "Roll", "Invinc", "Shield", "Shoes", "Wall", "BossHP", "Zone", "BossDX", "BossDY",
+            "Pit Danger", "Fall Danger", "Water", "ScreenX"
         ]
-        for s in stats:
-            cv2.putText(img, s, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.c_text, 1)
-            y += 25
+        for i, val in enumerate(base_data):
+            y_pos = 60 + (i * 22)
+            color = self.c_true if abs(val) > 0.01 else (100, 100, 100)
+            cv2.putText(img, f"{labels[i]}: {val:.2f}", (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
-        y += 10
-        cv2.putText(img, "SENSORI PERICOLO", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-        y += 20
-        self._draw_bar(img, 10, y, "Pit:", info.get('ai_pit_danger', 0.0), self.c_warn)
-        y += 20
-        self._draw_bar(img, 10, y, "Fall:", info.get('ai_falling_danger', 0.0), (0, 165, 255))
-        y += 30
+        # --- PANNELLO DESTRO (RADAR 12 SLOTS) ---
+        radar_slots = info.get('ai_radar_slots', [])
+        cv2.putText(img, "RADAR IA (12 SLOTS)", (W - 260, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
-        cv2.putText(img, "STATUS BOOLS", (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        y += 25
-        status = int(info.get('status', 0))
-        bools = [
-            ("Facing Left", status & 1), ("In Air", status & 2),
-            ("Rolling", status & 4), ("Invincible", info.get('invincible', 0) > 0),
-            ("Pushing Wall", info.get('pushing_wall', 0) > 0)
-        ]
-        for label, state in bools:
-            self._draw_bool(img, 10, y, label, state)
-            y += 25
+        for i, obj in enumerate(radar_slots):
+            if i >= 12 or obj['id'] == 0: continue
+            y_p = 60 + (i * 45)
+            name = self.OBJ_NAMES.get(obj['id'], f"ID:{obj['id']}")
 
-        # --- PANNELLO DESTRO: RADAR VISIVO ---
-        rx = W - 260
-        cv2.putText(img, "RADAR RAM", (rx, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-
-        radar_data = info.get('radar_debug', [])
-        ry = 60
-
-        # Ora l'HUD mostra i primi 10 oggetti trovati in memoria
-        for i, obj in enumerate(radar_data[:10]):
-            if obj.get('id', 0) == 0: continue
-
-            col = self.c_text
-            tipo = "OBJ"
-
-            if obj.get('l'):
-                col, tipo = self.c_warn, "LETHAL"
-            elif obj.get('e'):
-                col, tipo = (0, 165, 255), "ENEMY"
-            elif obj.get('p'):
-                col, tipo = (200, 200, 200), "PLATFORM"
-            elif obj.get('it'):
-                col, tipo = self.c_true, "ITEM"
-            elif obj.get('is_phys'):
-                col, tipo = (255, 0, 255), "SPRING"
-            elif obj.get('u'):
-                col, tipo = (150, 150, 150), "UNKNOWN"  # Nuova categoria per debug!
-
-            # Testo formattato in modo pulito
-            cv2.putText(img, f"[{i}] {tipo} (ID:{obj['id']})", (rx, ry), cv2.FONT_HERSHEY_SIMPLEX, 0.5, col, 1)
-            ry += 16
-            cv2.putText(img, f" Dist: {obj.get('dist', 0)} | dX:{obj['raw_dx']} dY:{obj['raw_dy']}", (rx, ry),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, self.c_text, 1)
-            ry += 25
+            # Colore basato sulla categoria
+            color = self.c_warn if obj['l'] else (0, 255, 0) if obj['it'] else self.c_text
+            cv2.putText(img, f"[{i}] {name}", (W - 260, y_p), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            cv2.putText(img, f" dx:{obj['dx']:.2f} dy:{obj['dy']:.2f} Sc:{obj['score']:.1f}", (W - 260, y_p + 15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
 
         return img

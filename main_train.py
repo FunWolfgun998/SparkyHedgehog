@@ -38,11 +38,10 @@ def main():
 
     # Parametri di addestramento dinamici
     lr_schedule = linear_schedule(2e-4, 1e-5)  # Il passo si fa più piccolo e preciso
-    ent_schedule = linear_schedule(0.05, 0.005)  # La curiosità diminuisce man mano che impara
 
     if os.path.exists(RESUME_MODEL):
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
-                         learning_rate=lr_schedule, ent_coef=ent_schedule)
+                         learning_rate=lr_schedule, ent_coef=0.025)
     else:
         model = PPO(
             "MlpPolicy",
@@ -54,7 +53,7 @@ def main():
             batch_size=1024,
             n_epochs=15,
             learning_rate=lr_schedule,  # Applicato qui
-            ent_coef=ent_schedule,  # Applicato qui
+            ent_coef=0.05,  # Applicato qui
             gamma=0.998,
             tensorboard_log=config.LOG_DIR
         )

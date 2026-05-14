@@ -24,6 +24,7 @@
     "score": {"address": 16776742, "type": ">u4"},
     "shield": {"address": 16776748, "type": "|u1"},
     "invincible": {"address": 16776749, "type": "|u1"},
+    "shoes": {"address": 16776750, "type": "|u1"},
     "level_end_bonus": {"address": 16775126, "type": "|u1"},
     "pushing_wall": {"address": 16764965, "type": "|u1"},
     "boss_hp": {"address": 16764958, "type": "|u1"},

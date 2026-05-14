@@ -64,7 +64,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=8_000_000,
+        total_timesteps=58_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

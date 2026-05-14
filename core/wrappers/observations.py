@@ -26,13 +26,26 @@ class SonicRAMWrapper(gym.Wrapper):
         # Categorie ID per classificazione rapida (Boss Esclusi dal Radar)
         BOSS_IDS = [61, 90, 117, 118, 121, 126]
         CAT = {
-            "LETHAL": [54, 22, 62, 100, 106, 103, 111, 21, 28, 31, 87, 88, 127],
-            "ENEMIES": [34, 35, 36, 40, 43, 44, 45, 64, 80, 96, 97],
-            "PHYSICS": [65, 41, 66, 30, 25, 71, 72, 75, 76],
-            "VITAL": [10, 14, 13],
+            # 54: Spikes | 22: Harpoon | 23: Spiked Helix (GHZ) | 35: Buzz Missile | 72: Boss Ball
+            # 87, 88: SYZ Spikes | 127: Boss Energy Ball
+            "LETHAL": [54, 22, 23, 35, 72, 100, 106, 103, 111, 87, 88, 127],
+
+            # 34: Buzz Bomber | 31: Crabmeat | 36: Newtron | 40: Motobug | 43: Chopper
+            # 44: Jaws | 45: Burrobot | 64: Green Newtron | 32: Bomb | 80: Yadrin | 96,97: Orbinaut
+            "ENEMIES": [34, 31, 36, 40, 43, 44, 45, 64, 32, 80, 96, 97],
+
+            # Molle e Bumper
+            "PHYSICS": [65, 41, 66, 30, 25, 71, 75, 76],
+
+            # Checkpoint, Cartello fine livello, Bolla d'aria
+            "VITAL": [10, 13, 14],
+
+            # Anelli, Monitor TV
             "ITEMS": [37, 38],
-            "PLATFORMS": [6, 7, 8, 9, 11, 12, 15, 17, 18, 20, 23, 24, 26, 33, 46, 47, 48, 49, 50, 52, 60, 68, 77, 78,
-                          79, 81, 82, 86, 89, 119, 122]
+
+            # Piattaforme, Ponti, Tronchi e la Capsula Prigione (62)
+            "PLATFORMS": [6, 7, 8, 9, 11, 12, 15, 17, 18, 20, 21, 24, 26, 28, 33, 46, 47, 48, 49, 50, 52, 60, 62, 68,
+                          77, 78, 79, 81, 82, 86, 89, 119, 122]
         }
 
         # --- 1. FISICA, STATUS E BOSS (20 Dati) ---
@@ -47,7 +60,7 @@ class SonicRAMWrapper(gym.Wrapper):
             1.0 if status & 1 else 0.0, 1.0 if status & 2 else 0.0, 1.0 if status & 4 else 0.0,
             1.0 if info.get('invincible', 0) > 0 else 0.0, 1.0 if info.get('shield', 0) > 0 else 0.0,
             1.0 if info.get('shoes', 0) > 0 else 0.0, 1.0 if info.get('pushing_wall', 0) > 0 else 0.0,
-            info.get('boss_hp', 8) / 8.0, info.get('zone', 0) / 6.0,
+            (info.get('boss_hp', 0) / 8.0) if boss_present else 0.0, info.get('zone', 0) / 6.0,
             (info.get('boss_x', 0) - s_x) / 500.0 if boss_present else 0.0,
             (info.get('boss_y', 0) - s_y) / 500.0 if boss_present else 0.0
         ]

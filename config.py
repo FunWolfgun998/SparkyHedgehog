@@ -31,4 +31,4 @@ STATES = [os.path.splitext(os.path.basename(f))[0] for f in STATE_FILES]
 if len(STATES) == 0:
     STATES = [STATE_NAME]
 
-NUM_ENVS = 30
+NUM_ENVS = 4

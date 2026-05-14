@@ -14,44 +14,36 @@ class SparkyHUD:
         self.c_title = (0, 215, 255)  # Giallo/Oro per titoli
 
         self.OBJ_NAMES = {
-            # --- PLAYER & SYMBOLS ---
-            1: "Sonic", 2: "Splats (Unused)", 3: "Blank",
-
-            # --- HAZARDS & ENEMIES (LETHAL/ENEMY) ---
-            22: "Buzz Bomber Missile", 31: "SYZ Spike Ball", 34: "Buzz Bomber",
-            35: "Crabmeat Missile", 36: "Newtron (Red Missile)", 40: "Motobug",
-            43: "Chopper (Fish)", 44: "Jaws (Shark)", 45: "Burrobot",
-            54: "Spikes (Universal)", 62: "Boss Ball (Chain)", 64: "Newtron (Green)",
-            80: "Yadrin (Badnik)", 87: "MZ Spikes (Fixed)", 88: "MZ Spikes (Up/Down)",
-            96: "Orbinaut (Spiked)", 97: "Orbinaut (Spiked)", 100: "Lava Tag (MZ)",
-            103: "Lava Geyser", 106: "Fireball (MZ)", 111: "SBZ Electric/Spike",
-            127: "Final Boss Energy Ball",
+            # --- HAZARDS & ENEMIES ---
+            22: "Harpoon / Missile", 23: "Spiked Helix", 31: "Crabmeat",
+            32: "Bomb Enemy", 34: "Buzz Bomber", 35: "Buzz Missile",
+            36: "Red Newtron", 40: "Motobug", 43: "Chopper (Fish)",
+            44: "Jaws", 45: "Burrobot", 54: "Spikes", 64: "Green Newtron",
+            72: "Boss Wrecking Ball", 80: "Yadrin", 87: "Fixed Spikes",
+            88: "Moving Spikes", 96: "Orbinaut", 97: "Orbinaut",
+            127: "Energy Ball",
 
             # --- BOSSES ---
-            61: "Dr. Eggman (GHZ)", 90: "Dr. Eggman (SYZ)", 117: "Dr. Eggman (Final)",
-            118: "Final Boss Machine", 119: "Boss Platform", 121: "Dr. Eggman (SLZ)",
-            122: "Boss Platform", 126: "Dr. Eggman (Final Boss)",
+            61: "Eggman (GHZ)", 90: "Eggman (SYZ)", 117: "Eggman (Final)",
+            118: "Final Machine", 119: "Boss Platform", 121: "Eggman (SLZ)",
+            126: "Final Boss",
 
-            # --- PHYSICS & MECHANISMS (PHYSICS) ---
-            25: "Bumper (Universal)", 30: "See-Saw (SLZ)", 41: "Spring (Vertical)",
-            65: "Spring (Horizontal)", 66: "Spring (Diagonal)", 71: "Bumper (SYZ)",
-            72: "Large Ball (SYZ)", 75: "Conveyor Belt (SBZ)", 76: "Conveyor Belt (SBZ)",
+            # --- PHYSICS ---
+            25: "Bumper", 30: "See-Saw", 41: "Spring", 65: "Spring",
+            66: "Diag. Spring", 71: "Bumper", 75: "Conveyor Belt",
 
-            # --- PLATFORMS & TERRAIN (PLATFORM) ---
-            6: "GHZ Ledge Nodes", 7: "GHZ Rock/Edge", 8: "GHZ Bridge Stem",
-            9: "GHZ Floating Log", 11: "GHZ Bridge (Water)", 12: "GHZ Bridge (Wood)",
-            15: "GHZ Swinging Platform", 17: "GHZ Tunnel Door", 18: "GHZ Moving Block",
-            23: "SYZ Floating Block", 24: "SYZ Moving Block", 26: "GHZ Collapsing Ledge",
-            28: "GHZ Bridge Log", 46: "MZ Moving Block", 47: "MZ Large Press",
-            49: "MZ Stomper", 50: "MZ Rotating Block", 52: "MZ Door",
-            60: "GHZ Stone Wall", 68: "Invisible Barrier", 77: "SLZ Large Platform",
-            78: "SLZ Small Platform", 79: "SLZ Seesaw Base", 81: "MZ Smashable Wall",
-            82: "MZ Collapsing Floor", 86: "MZ Moving Block", 89: "MZ Crushing Pillar",
-            122: "SBZ Moving Platform",
+            # --- PLATFORMS ---
+            6: "Ledge Node", 7: "GHZ Rock", 8: "Bridge Stem",
+            9: "Floating Log", 11: "Water Bridge", 12: "Wood Bridge",
+            15: "Swing Platform", 17: "Tunnel Door", 18: "Moving Block",
+            21: "Swing Platform", 24: "Moving Block", 26: "Collapse Ledge",
+            28: "Bridge Log", 47: "MZ Press", 49: "MZ Stomper",
+            60: "Stone Wall", 62: "Prison Capsule", 68: "Invis. Barrier",
+            81: "Smashable Wall", 82: "Collapse Floor",
 
-            # --- ITEMS & COLLECTIBLES (ITEM) ---
-            10: "Air Bubble (LZ)", 13: "Signpost (Goal)", 14: "Lamppost (Checkpoint)",
-            37: "Ring (Collectible)", 38: "TV Monitor (Power-up)"
+            # --- ITEMS / VITAL ---
+            10: "Air Bubble", 13: "Goal Signpost", 14: "Checkpoint",
+            37: "Ring", 38: "TV Monitor"
         }
 
     def toggle(self):

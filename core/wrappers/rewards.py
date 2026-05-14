@@ -7,24 +7,24 @@ class SparkyReward(gym.Wrapper):
         super().__init__(env)
 
         # --- CONFIGURAZIONE PREMI (PRUDENZA & EFFICIENZA) ---
-        self.REW_TIME = -0.1  # Malus tempo
+        self.REW_TIME = -0.2  # Malus tempo
         self.REW_PROGRESS = 3.0  # Punti progresso
-        self.PEN_BACKTRACK = -4.0  # Severo se torna indietro
-        self.REW_WIN = 2500.0  # Obiettivo Supremo
-        self.PEN_DEATH = -600.0  # Morire è il fallimento massimo
+        self.PEN_BACKTRACK = -2.0  # Severo se torna indietro
+        self.REW_WIN = 1250.0  # Obiettivo Supremo
+        self.PEN_DEATH = -200.0  # Morire è il fallimento massimo
 
         self.REW_ENEMY = 250.0  # Premio nemico
         self.REW_RING = 15.0  # Premio anello
-        self.REW_FIRST_RING = 100.0  # BONUS "SALVAVITA" (Passaggio 0 -> 1)
+        self.REW_FIRST_RING = 30.0  # BONUS "SALVAVITA" (Passaggio 0 -> 1)
         self.PEN_VULNERABLE = -0.3  # Malus costante se ha 0 anelli
-        self.PEN_DAMAGE = -200.0  # Malus colpo subito
+        self.PEN_DAMAGE = -125.0  # Malus colpo subito
 
         self.REW_SPRING = 400.0  # Trampolino
-        self.REW_SPRING_RIGHT = 200.0  # Trampolino + Direzione Destra
+        self.REW_SPRING_RIGHT = 100.0  # Trampolino + Direzione Destra
         self.REW_LOOP_SUCCESS = 800.0  # Giro della morte completo
         self.PEN_JUMP_LOOP = -20.0  # Errore critico: saltare nel loop
 
-        self.PEN_ACTION_FLICKER = -0.1  # Anti-azione frenetica (smoothness)
+        self.PEN_ACTION_FLICKER = -0.4  # Anti-azione frenetica (smoothness)
         self.PEN_WALL_STUCK = -0.8  # Pushing wall
         self.PEN_STUCK_IDLE = -5.0  # Malus se resta fermo nello stesso posto
 

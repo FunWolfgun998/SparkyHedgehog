@@ -12,12 +12,11 @@ import config
 
 
 # --- SCHEDULER PER IL LEARNING RATE ---
-def linear_schedule(initial_value):
-    """Decresce linearmente il tasso di apprendimento."""
-
+def linear_schedule(initial_value, final_value=0.0):
+    """Decresce linearmente un valore da initial a final."""
     def func(progress_remaining):
-        return progress_remaining * initial_value
-
+        # progress_remaining va da 1.0 (inizio) a 0.0 (fine)
+        return final_value + (initial_value - final_value) * progress_remaining
     return func
 
 
@@ -37,12 +36,14 @@ def main():
     MODEL_NAME = "Sparky_run_1_2000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
+    # Parametri di addestramento dinamici
+    lr_schedule = linear_schedule(2e-4, 1e-5)  # Il passo si fa più piccolo e preciso
+    ent_schedule = linear_schedule(0.05, 0.005)  # La curiosità diminuisce man mano che impara
+
     if os.path.exists(RESUME_MODEL):
-        print(f"🔄 CARICAMENTO MODELLO: {RESUME_MODEL}")
-        model = PPO.load(RESUME_MODEL, env=envs, device="cuda")
+        model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
+                         learning_rate=lr_schedule, ent_coef=ent_schedule)
     else:
-        print(f"⚠️ MODELLO NON TROVATO a: {RESUME_MODEL}")
-        print("🆕 CREAZIONE NUOVA RETE NEURALE (188 Inputs)")
         model = PPO(
             "MlpPolicy",
             envs,
@@ -52,9 +53,9 @@ def main():
             n_steps=4096,
             batch_size=1024,
             n_epochs=15,
-            learning_rate=linear_schedule(2e-4),
+            learning_rate=lr_schedule,  # Applicato qui
+            ent_coef=ent_schedule,  # Applicato qui
             gamma=0.998,
-            ent_coef=0.05,
             tensorboard_log=config.LOG_DIR
         )
 

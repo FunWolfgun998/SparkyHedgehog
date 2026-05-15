@@ -39,6 +39,10 @@ class SparkyReward(gym.Wrapper):
         self.REW_LIFE_GAIN = 1000.0  # Vita Extra (1-UP o 100 anelli)
         self.REW_ROLLING = 0.5  # Incoraggiamento difesa (Rotolamento)
         self.REW_PROGRESS_Y = 2.0  # Progresso verticale (Salita)
+
+        self.REW_MOMENTUM = 0.5  # Mini-premio se mantiene una velocità alta (> 400)
+        self.PEN_MOMENTUM_LOSS = -5.0  # Malus se frena o sbatte perdendo tanta velocità
+
         self._init_vars()
 
     def _init_vars(self):
@@ -58,6 +62,7 @@ class SparkyReward(gym.Wrapper):
         self.prev_shoes = 0
         self.prev_lives = 3
         self.prev_boss_hp = 8
+        self.prev_g_speed = 0
         self.boss_initialized = False
         self.first_step = True
         self.spring_active = False
@@ -118,6 +123,22 @@ class SparkyReward(gym.Wrapper):
         if curr_zone in [1, 2, 4] and curr_y < self.min_y:
             step_reward += (self.min_y - curr_y) * self.REW_PROGRESS_Y
             self.min_y = curr_y
+
+        if g_speed > 400 and not in_air:
+            step_reward += self.REW_MOMENTUM
+            # Nessun log qui altrimenti la console spamma mille messaggi al secondo
+
+            # 2. Punizione per perdita brutale di velocità (Schianto contro ostacolo o frenata brusca)
+            # Se al frame prima andava a 400 e ora va a 100, ha perso 300 di velocità in un istante.
+        delta_speed = self.prev_g_speed - g_speed
+
+        # Puniamo solo perdite importanti (> 150) e non le normali decellerazioni
+        if delta_speed > 150 and not in_air and not is_rolling:
+            step_reward += self.PEN_MOMENTUM_LOSS
+            sparky_logger.log("🛑 SBATTIMENTO! Inerzia persa: -{s} | Penalita': {p}", s=delta_speed,
+                              p=self.PEN_MOMENTUM_LOSS)
+
+        self.prev_g_speed = g_speed
 
         # --- MODULO ANTI-STUCK ---
         is_boss_active = any(info.get(f'obj{i}_id', 0) in self.BOSS_IDS for i in range(1, 61))

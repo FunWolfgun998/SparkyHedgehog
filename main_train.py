@@ -41,7 +41,7 @@ def main():
 
     if os.path.exists(RESUME_MODEL):
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
-                         learning_rate=lr_schedule, ent_coef=0.025)
+                         learning_rate=lr_schedule, ent_coef=0.04)
     else:
         model = PPO(
             "MlpPolicy",

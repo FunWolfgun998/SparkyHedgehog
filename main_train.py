@@ -30,7 +30,10 @@ def main():
 
     policy_kwargs = dict(
         activation_fn=torch.nn.ReLU,
-        net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
+        net_arch=dict(
+            pi=[256, 256, 128],  # Attore più agile
+            vf=[512, 512, 256]  # Critico più potente
+        )
     )
 
     MODEL_NAME = "Sparky_run_1_000000.zip"
@@ -41,7 +44,7 @@ def main():
 
     if os.path.exists(RESUME_MODEL):
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
-                         learning_rate=lr_schedule, ent_coef=0.04)
+                         learning_rate=lr_schedule, ent_coef=0.02)
     else:
         model = PPO(
             "MlpPolicy",
@@ -53,7 +56,7 @@ def main():
             batch_size=1024,
             n_epochs=15,
             learning_rate=lr_schedule,  # Applicato qui
-            ent_coef=0.05,  # Applicato qui
+            ent_coef=0.02,  # Applicato qui
             gamma=0.998,
             tensorboard_log=config.LOG_DIR
         )

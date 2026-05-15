@@ -49,7 +49,16 @@ class SonicRAMWrapper(gym.Wrapper):
         }
 
         # --- 1. FISICA, STATUS E BOSS (20 Dati) ---
-        boss_present = any(info.get(f'obj{j}_id') in BOSS_IDS for j in range(1, 61))
+        boss_hp = 0
+        boss_dx = 0
+        boss_dy = 0
+        for j in range(1, 61):
+            o_id = info.get(f'obj{j}_id')
+            if o_id in BOSS_IDS:
+                boss_hp = info.get(f'obj{j}_hp', 0) / 8.0
+                boss_dx = (info.get(f'obj{j}_x', 0) - s_x) / 500.0
+                boss_dy = (info.get(f'obj{j}_y', 0) - s_y) / 500.0
+                break
 
         ram = [
             s_x / 10000.0, s_y / 4000.0,
@@ -60,9 +69,9 @@ class SonicRAMWrapper(gym.Wrapper):
             1.0 if status & 1 else 0.0, 1.0 if status & 2 else 0.0, 1.0 if status & 4 else 0.0,
             1.0 if info.get('invincible', 0) > 0 else 0.0, 1.0 if info.get('shield', 0) > 0 else 0.0,
             1.0 if info.get('shoes', 0) > 0 else 0.0, 1.0 if info.get('pushing_wall', 0) > 0 else 0.0,
-            (info.get('boss_hp', 0) / 8.0) if boss_present else 0.0, info.get('zone', 0) / 6.0,
-            (info.get('boss_x', 0) - s_x) / 500.0 if boss_present else 0.0,
-            (info.get('boss_y', 0) - s_y) / 500.0 if boss_present else 0.0
+            boss_hp,
+            boss_dx,
+            boss_dy
         ]
 
         # --- 2. AMBIENTE (4 Dati) ---

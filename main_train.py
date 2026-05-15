@@ -33,7 +33,7 @@ def main():
         net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
     )
 
-    MODEL_NAME = "Sparky_run_1_2000000.zip"
+    MODEL_NAME = "Sparky_run_1_000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
@@ -64,7 +64,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=58_000_000,
+        total_timesteps=60_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

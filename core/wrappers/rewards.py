@@ -41,7 +41,7 @@ class SparkyReward(gym.Wrapper):
         self.REW_PROGRESS_Y = 2.0  # Progresso verticale (Salita)
 
         self.REW_MOMENTUM = 0.5  # Mini-premio se mantiene una velocità alta (> 400)
-        self.PEN_MOMENTUM_LOSS = -5.0  # Malus se frena o sbatte perdendo tanta velocità
+        self.PEN_MOMENTUM_LOSS = -2.0  # Malus se frena o sbatte perdendo tanta velocità
 
         self._init_vars()
 
@@ -135,8 +135,7 @@ class SparkyReward(gym.Wrapper):
         # Puniamo solo perdite importanti (> 150) e non le normali decellerazioni
         if delta_speed > 150 and not in_air and not is_rolling:
             step_reward += self.PEN_MOMENTUM_LOSS
-            sparky_logger.log("🛑 SBATTIMENTO! Inerzia persa: -{s} | Penalita': {p}", s=delta_speed,
-                              p=self.PEN_MOMENTUM_LOSS)
+#            sparky_logger.log("🛑 SBATTIMENTO! Inerzia persa: -{s} | Penalita': {p}", s=delta_speed, p=self.PEN_MOMENTUM_LOSS)
 
         self.prev_g_speed = g_speed
 
@@ -220,21 +219,29 @@ class SparkyReward(gym.Wrapper):
             sparky_logger.log("🚩 CHECKPOINT!")
 
         # Logica Trampolini (Indipendente)
-        delta_v_y = v_y - self.prev_v_y
         radar_slots = info.get('ai_radar_slots', [])
-        spring_hit = any(obj['id'] in [41, 65, 66] and obj['dy'] > 0 and abs(obj['dx']) < 0.04
-                         for obj in radar_slots if obj['dist'] < 20)
 
-        if spring_hit and delta_v_y < -400 and not self.spring_active:
+        # 1. C'è una molla nelle vicinanze?
+        # Abbiamo rimosso 'dy > 0' perché la molla potrebbe essere in un albero (sopra)
+        # Abbiamo allargato leggermente 'dist' a 30 e 'dx' a 0.08 per essere meno severi
+        spring_near = any(
+            obj['id'] in [41, 65, 66] for obj in radar_slots if obj['dist'] < 30 and abs(obj['dx']) < 0.08)
+
+        # 2. Controllo FISICO REALE:
+        # Se v_y <= -2000, è fisicamente impossibile che sia un salto normale.
+        # È il "marchio di fabbrica" di una molla.
+        if spring_near and v_y <= -2000 and not self.spring_active:
             bonus = self.REW_SPRING
             if v_x > 100: bonus += self.REW_SPRING_RIGHT
             step_reward += bonus
             self.spring_active = True
-            sparky_logger.log("🚀 TRAMPOLINO VERO! +{r}", r=bonus)
+            sparky_logger.log("🚀 TRAMPOLINO VERO! Vel: {v} | Premio: +{r}", v=v_y, r=bonus)
 
-        if not in_air: self.spring_active = False
+        # Resetta lo stato quando tocca terra, pronto per la prossima molla
+        if not in_air:
+            self.spring_active = False
+
         self.prev_v_y = v_y
-
         # --- MODULO POWER-UP ---
         curr_invinc = info.get('invincible', 0)
         curr_shield = info.get('shield', 0)

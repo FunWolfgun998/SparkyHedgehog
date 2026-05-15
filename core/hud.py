@@ -75,7 +75,7 @@ class SparkyHUD:
             "X Norm", "Y Norm", "Vel X", "Vel Y", "G-Speed", "Angle",
             "Rings(B)", "Air Timer", "Pit Dist", "Left(B)", "Air(B)",
             "Roll(B)", "Invinc(B)", "Shield(B)", "Shoes(B)", "Wall(B)",
-            "Boss HP", "Zone", "Boss DX", "Boss DY", "Danger Pit",
+            "Zone", "Boss HP", "Boss DX", "Boss DY", "Danger Pit",
             "Danger Fall", "Water(B)", "Screen X"
         ]
 

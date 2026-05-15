@@ -36,16 +36,18 @@ def main():
         )
     )
 
-    MODEL_NAME = "Sparky_run_1_000000.zip"
+    MODEL_NAME = "DFGDFGTER"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
     lr_schedule = linear_schedule(2e-4, 1e-5)  # Il passo si fa più piccolo e preciso
 
-    if os.path.exists(RESUME_MODEL):
+    if os.path.isfile(RESUME_MODEL):
+        print(f"♻️ Ripristino modello esistente: {MODEL_NAME}")
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
                          learning_rate=lr_schedule, ent_coef=0.02)
     else:
+        print("🆕 Nessun modello trovato. Creazione di una nuova rete neurale...")
         model = PPO(
             "MlpPolicy",
             envs,
@@ -55,8 +57,8 @@ def main():
             n_steps=4096,
             batch_size=1024,
             n_epochs=15,
-            learning_rate=lr_schedule,  # Applicato qui
-            ent_coef=0.02,  # Applicato qui
+            learning_rate=lr_schedule,
+            ent_coef=0.02,  # Esplorazione iniziale
             gamma=0.998,
             tensorboard_log=config.LOG_DIR
         )
@@ -67,7 +69,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=60_000_000,
+        total_timesteps=80_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

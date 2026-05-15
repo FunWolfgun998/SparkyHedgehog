@@ -55,30 +55,40 @@ class SonicRAMWrapper(gym.Wrapper):
         for j in range(1, 61):
             o_id = info.get(f'obj{j}_id')
             if o_id in BOSS_IDS:
-                boss_hp = info.get(f'obj{j}_hp', 0) / 8.0
-                boss_dx = (info.get(f'obj{j}_x', 0) - s_x) / 500.0
-                boss_dy = (info.get(f'obj{j}_y', 0) - s_y) / 500.0
-                break
+                temp_hp = info.get(f'obj{j}_hp', 0)
+                if temp_hp > 0:
+                    boss_hp = temp_hp / 8.0
+                    boss_dx = (info.get(f'obj{j}_x', 0) - s_x) / 500.0
+                    boss_dy = (info.get(f'obj{j}_y', 0) - s_y) / 500.0
+                    break
 
         ram = [
-            s_x / 10000.0, s_y / 4000.0,
-            info.get('velocity_x', 0) / 2000.0, info.get('velocity_y', 0) / 2000.0,
-            info.get('ground_speed', 0) / 2000.0, info.get('angle', 0) / 255.0,
-            1.0 if info.get('rings', 0) > 0 else 0.0, info.get('air_timer', 1800) / 1800.0,
-            (pit_limit - s_y) / 500.0,
-            1.0 if status & 1 else 0.0, 1.0 if status & 2 else 0.0, 1.0 if status & 4 else 0.0,
-            1.0 if info.get('invincible', 0) > 0 else 0.0, 1.0 if info.get('shield', 0) > 0 else 0.0,
-            1.0 if info.get('shoes', 0) > 0 else 0.0, 1.0 if info.get('pushing_wall', 0) > 0 else 0.0,
-            boss_hp,
-            boss_dx,
-            boss_dy
+            s_x / 10000.0, s_y / 4000.0,  # 1, 2
+            info.get('velocity_x', 0) / 2000.0,  # 3
+            info.get('velocity_y', 0) / 2000.0,  # 4
+            info.get('ground_speed', 0) / 2000.0,  # 5
+            info.get('angle', 0) / 255.0,  # 6
+            1.0 if info.get('rings', 0) > 0 else 0.0,  # 7
+            info.get('air_timer', 1800) / 1800.0,  # 8
+            (pit_limit - s_y) / 500.0,  # 9
+            1.0 if status & 1 else 0.0,  # 10: Left(B)
+            1.0 if status & 2 else 0.0,  # 11: Air(B)
+            1.0 if status & 4 else 0.0,  # 12: Roll(B)
+            1.0 if info.get('invincible', 0) > 0 else 0.0,  # 13
+            1.0 if info.get('shield', 0) > 0 else 0.0,  # 14
+            1.0 if info.get('shoes', 0) > 0 else 0.0,  # 15
+            1.0 if info.get('pushing_wall', 0) > 0 else 0.0,  # 16
+            info.get('zone', 0) / 6.0,  # 17
+            boss_hp,  # 18
+            boss_dx,  # 19
+            boss_dy  # 20
         ]
-
         # --- 2. AMBIENTE (4 Dati) ---
         dist_to_death = pit_limit - s_y
         pit_danger = max(0.0, 1.0 - (dist_to_death / 200.0))
         falling_danger = 1.0 if (info.get('velocity_y', 0) > 200 and (status & 2)) else 0.0
         cam_x = info.get('camera_x', 0)
+
         ram.extend([pit_danger, falling_danger, 1.0 if (status & 64) else 0.0, (s_x - cam_x) / 320.0])
 
         # --- 3. RADAR OGGETTI (Esclusi Boss e Sonic) ---

@@ -22,6 +22,9 @@ class SparkyReward(gym.Wrapper):
         # --- 3. ESPLORAZIONE & VITAL ---
         self.REW_CHECKPOINT = 1000.0  # Grande incentivo a raggiungere i pali stellari
         self.REW_BREATH = 100.0  # Premio per bolle d'aria (sopravvivenza in acqua)
+        self.PEN_STUCK_WARNING = -10.0
+        self.REW_POWERUP = 200.0
+        self.PEN_STUCK_FATAL = -50.0
 
         self.BOSS_IDS = [61, 90, 117, 118, 121, 126]
         self._init_vars()
@@ -36,8 +39,12 @@ class SparkyReward(gym.Wrapper):
         self.prev_lamppost = 0
         self.prev_boss_hp = 8
         self.stuck_counter = 0
+        self.stuck_anchor_x = 0
         self.boss_initialized = False
         self.first_step = True
+        self.prev_invincible = 0
+        self.prev_shield = 0
+        self.prev_shoes = 0
 
     def reset(self, **kwargs):
         self._init_vars()
@@ -58,15 +65,23 @@ class SparkyReward(gym.Wrapper):
         curr_lamppost = info.get('lamppost_id', 0)
         curr_boss_hp = info.get('boss_hp', 0)
 
+        curr_invinc = info.get('invincible', 0)
+        curr_shield = info.get('shield', 0)
+        curr_shoes = info.get('shoes', 0)
         # Sincronizzazione Primo Frame
+
         if self.first_step:
-            self.max_x = self.prev_x = curr_x
+            self.max_x = self.prev_x = self.stuck_anchor_x = curr_x
             self.prev_y = curr_y
             self.prev_rings = c_rings
             self.prev_score = curr_score
             self.prev_air = curr_air
             self.prev_lamppost = curr_lamppost
             self.prev_boss_hp = curr_boss_hp
+
+            self.prev_invincible = curr_invinc
+            self.prev_shield = curr_shield
+            self.prev_shoes = curr_shoes
             self.first_step = False
             return obs, 0.0, term, trunc, info
 
@@ -78,17 +93,23 @@ class SparkyReward(gym.Wrapper):
         if curr_x > self.max_x:
             step_reward += (curr_x - self.max_x) * self.REW_PROGRESS
             self.max_x = curr_x
-        # Rimosso malus Backtrack: REW_TIME è sufficiente a scoraggiare perdite di tempo
 
-        # --- MODULO ANTI-STUCK (Semplificato) ---
-        # Se la posizione è identica (tolleranza 1px), incrementa contatore
-        if abs(curr_x - self.prev_x) <= 1 and abs(curr_y - self.prev_y) <= 1:
-            self.stuck_counter += 1
-            if self.stuck_counter >= 360:  # 6 secondi a 60fps
-                trunc = True
-                sparky_logger.log("🛑 STUCK DETECTED! Reset episodio.")
-        else:
+            # --- MODULO ANTI-STUCK (Basato su Ancora X) ---
+        is_boss_active = any(info.get(f'obj{i}_id', 0) in self.BOSS_IDS for i in range(1, 61))
+
+        if is_boss_active or abs(curr_x - self.stuck_anchor_x) > 15:
             self.stuck_counter = 0
+            self.stuck_anchor_x = curr_x
+        else:
+            self.stuck_counter += 1
+            if self.stuck_counter == 120:
+                step_reward += self.PEN_STUCK_WARNING
+                sparky_logger.log("⚠️ STUCK WARNING! (2s)")
+            elif self.stuck_counter >= 360:
+                step_reward += self.PEN_STUCK_FATAL
+                trunc = True
+                sparky_logger.log("🛑 FATAL STUCK! Reset episodio.")
+
 
         # --- MODULO SOPRAVVIVENZA (Logica Binaria Anelli) ---
         if c_rings > self.prev_rings:
@@ -102,7 +123,10 @@ class SparkyReward(gym.Wrapper):
             sparky_logger.log("💥 DANNO SUBITO (Anelli Persi)! -{p}", p=abs(self.PEN_DAMAGE))
 
         # Bolla d'aria
-        if curr_air > self.prev_air + 500:
+        status = int(info.get('status', 0))
+        underwater = (status & 64) != 0
+
+        if underwater and (curr_air > self.prev_air + 500):
             step_reward += self.REW_BREATH
             sparky_logger.log("🫧 ARIA PRESA!")
 

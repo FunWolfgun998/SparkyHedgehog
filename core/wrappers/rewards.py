@@ -11,6 +11,7 @@ class SparkyReward(gym.Wrapper):
         self.REW_PROGRESS = 2.0  # Punti per ogni pixel guadagnato verso destra
         self.REW_WIN = 5000.0  # Obiettivo Supremo (Win Condition)
         self.PEN_DEATH = -500.0  # Malus per la morte (da evitare assolutamente)
+        self.REW_SPRING = 200.0
 
         # --- 2. SURVIVAL & COMBAT (LA SOPRAVVIVENZA) ---
         self.REW_FIRST_RING = 50.0  # Passaggio critico da 0 a 1 anello (Armatura ON)
@@ -101,12 +102,21 @@ class SparkyReward(gym.Wrapper):
             self.max_x = curr_x
 
         # INERZIA ESPONENZIALE (Impedisce saltelli inutili e fa superare i loop)
-        if v_x > 300 and not in_air and (curr_x >= self.max_x - 50):
-            #sparky_logger.log("👟 GRANDE VELOCITA'")
+        if v_x > 1000 and not in_air and (curr_x >= self.max_x - 50):
             speed_ratio = v_x / 1000.0
             momentum_bonus = (speed_ratio ** 2) * self.REW_MOMENTUM_BASE
+            sparky_logger.log("👟 GRANDE VELOCITA' +{s}", s= momentum_bonus)
             step_reward += momentum_bonus
+        # LOGICA TRAMPOLINI (Basata puramente sulla fisica)
+        # Se viene sparato in aria violentemente (-1500) è sicuramente una molla
+        if v_y <= -2500 and not self.spring_active:
+            step_reward += self.REW_SPRING
+            self.spring_active = True
+            sparky_logger.log("🚀 TRAMPOLINO UTILIZZATO! +{r}", r=self.REW_SPRING)
 
+        # Resetta il trampolino quando tocca terra
+        if not in_air:
+            self.spring_active = False
         # --- 2. MODULO ANTI-STUCK ---
         is_boss_active = any(info.get(f'obj{i}_id', 0) in self.BOSS_IDS for i in range(1, 61))
 

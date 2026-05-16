@@ -36,7 +36,7 @@ def main():
         )
     )
 
-    MODEL_NAME = "m"
+    MODEL_NAME = ""
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici

@@ -31,12 +31,12 @@ def main():
     policy_kwargs = dict(
         activation_fn=torch.nn.ReLU,
         net_arch=dict(
-            pi=[256, 256, 128],  # Attore più agile
-            vf=[512, 512, 256]  # Critico più potente
+            pi=[512, 512],  # Attore più agile
+            vf=[512, 512]  # Critico più potente
         )
     )
 
-    MODEL_NAME = "DFGDFGTER"
+    MODEL_NAME = "m"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
@@ -69,7 +69,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=80_000_000,
+        total_timesteps=51_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

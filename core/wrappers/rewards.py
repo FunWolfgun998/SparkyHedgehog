@@ -7,7 +7,7 @@ class SparkyReward(gym.Wrapper):
         super().__init__(env)
 
         # --- 1. CORE PROGRESS (IL MOTORE) ---
-        self.REW_TIME = -0.1  # Piccolo malus costante per incoraggiare il movimento
+        self.REW_TIME = -0.2  # Piccolo malus costante per incoraggiare il movimento
         self.REW_PROGRESS = 2.0  # Punti per ogni pixel guadagnato verso destra
         self.REW_WIN = 5000.0  # Obiettivo Supremo (Win Condition)
         self.PEN_DEATH = -500.0  # Malus per la morte (da evitare assolutamente)
@@ -17,14 +17,15 @@ class SparkyReward(gym.Wrapper):
         self.REW_RING = 1.0  # Anelli extra (valore minimo per evitare farming)
         self.PEN_DAMAGE = -100.0  # Malus per perdita anelli (Armatura OFF)
         self.REW_ENEMY = 30.0  # Piccolo premio per nemici (non prioritario)
-        self.REW_BOSS_HIT = 200.0  # Premio per colpire il boss (necessario per avanzare)
+        self.REW_BOSS_HIT = 500.0  # Premio per colpire il boss (necessario per avanzare)
 
         # --- 3. ESPLORAZIONE & VITAL ---
         self.REW_CHECKPOINT = 1000.0  # Grande incentivo a raggiungere i pali stellari
         self.REW_BREATH = 100.0  # Premio per bolle d'aria (sopravvivenza in acqua)
+        self.REW_POWERUP = 150.0
         self.PEN_STUCK_WARNING = -10.0
-        self.REW_POWERUP = 200.0
         self.PEN_STUCK_FATAL = -50.0
+        self.REW_MOMENTUM_BASE = 5.0
 
         self.BOSS_IDS = [61, 90, 117, 118, 121, 126]
         self._init_vars()
@@ -45,6 +46,7 @@ class SparkyReward(gym.Wrapper):
         self.prev_invincible = 0
         self.prev_shield = 0
         self.prev_shoes = 0
+        self.spring_active = False
 
     def reset(self, **kwargs):
         self._init_vars()
@@ -59,17 +61,23 @@ class SparkyReward(gym.Wrapper):
         # Estrazione Dati
         curr_x = info.get('x', 0)
         curr_y = info.get('y', 0)
+        v_x = info.get('velocity_x', 0)
+        v_y = info.get('velocity_y', 0)
         c_rings = info.get('rings', 0)
         curr_score = info.get('score', 0)
         curr_air = info.get('air_timer', 1800)
         curr_lamppost = info.get('lamppost_id', 0)
         curr_boss_hp = info.get('boss_hp', 0)
 
+        status = int(info.get('status', 0))
+        in_air = (status & 2) != 0
+        underwater = (status & 64) != 0
+
         curr_invinc = info.get('invincible', 0)
         curr_shield = info.get('shield', 0)
         curr_shoes = info.get('shoes', 0)
-        # Sincronizzazione Primo Frame
 
+        # Sincronizzazione Primo Frame
         if self.first_step:
             self.max_x = self.prev_x = self.stuck_anchor_x = curr_x
             self.prev_y = curr_y
@@ -78,7 +86,6 @@ class SparkyReward(gym.Wrapper):
             self.prev_air = curr_air
             self.prev_lamppost = curr_lamppost
             self.prev_boss_hp = curr_boss_hp
-
             self.prev_invincible = curr_invinc
             self.prev_shield = curr_shield
             self.prev_shoes = curr_shoes
@@ -88,13 +95,19 @@ class SparkyReward(gym.Wrapper):
         # Inizio calcolo reward dello step
         step_reward = self.REW_TIME
 
-        # --- MODULO MOVIMENTO (Semplificato) ---
-        # Premiamo solo se superiamo il punto più a destra mai raggiunto
+        # --- 1. MODULO MOVIMENTO & FISICA AVANZATA ---
         if curr_x > self.max_x:
             step_reward += (curr_x - self.max_x) * self.REW_PROGRESS
             self.max_x = curr_x
 
-            # --- MODULO ANTI-STUCK (Basato su Ancora X) ---
+        # INERZIA ESPONENZIALE (Impedisce saltelli inutili e fa superare i loop)
+        if v_x > 300 and not in_air and (curr_x >= self.max_x - 50):
+            sparky_logger.log("👟 GRANDE VELOCITA'")
+            speed_ratio = v_x / 1000.0
+            momentum_bonus = (speed_ratio ** 2) * self.REW_MOMENTUM_BASE
+            step_reward += momentum_bonus
+
+        # --- 2. MODULO ANTI-STUCK ---
         is_boss_active = any(info.get(f'obj{i}_id', 0) in self.BOSS_IDS for i in range(1, 61))
 
         if is_boss_active or abs(curr_x - self.stuck_anchor_x) > 15:
@@ -110,25 +123,33 @@ class SparkyReward(gym.Wrapper):
                 trunc = True
                 sparky_logger.log("🛑 FATAL STUCK! Reset episodio.")
 
-
-        # --- MODULO SOPRAVVIVENZA (Logica Binaria Anelli) ---
+        # --- 3. MODULO SOPRAVVIVENZA & POWER-UPS ---
+        # Anelli
         if c_rings > self.prev_rings:
             if self.prev_rings == 0:
-                step_reward += self.REW_FIRST_RING  # Bonus Armatura ON
+                step_reward += self.REW_FIRST_RING
                 sparky_logger.log("🛡️ ARMATURA ATTIVA (Primo Anello)! +{s}", s=self.REW_FIRST_RING)
             else:
                 step_reward += (c_rings - self.prev_rings) * self.REW_RING
         elif c_rings < self.prev_rings and not term:
-            step_reward += self.PEN_DAMAGE  # Malus Armatura OFF
+            step_reward += self.PEN_DAMAGE
             sparky_logger.log("💥 DANNO SUBITO (Anelli Persi)! -{p}", p=abs(self.PEN_DAMAGE))
 
-        # Bolla d'aria
-        status = int(info.get('status', 0))
-        underwater = (status & 64) != 0
-
-        if underwater and (curr_air > self.prev_air + 500):
+        # Bolla d'aria (Corretto il trigger)
+        if underwater and (curr_air > self.prev_air + 200):
             step_reward += self.REW_BREATH
-            sparky_logger.log("🫧 ARIA PRESA!")
+            sparky_logger.log("🫧 ARIA PRESA! +{r}", r=self.REW_BREATH)
+
+        # Power-Ups (Ripristinati)
+        if curr_invinc > self.prev_invincible:
+            step_reward += self.REW_POWERUP
+            sparky_logger.log("⭐ INVINCIBILITA' PRESA!")
+        if curr_shield > self.prev_shield:
+            step_reward += self.REW_POWERUP
+            sparky_logger.log("🛡️ SCUDO PRESO!")
+        if curr_shoes > self.prev_shoes:
+            step_reward += self.REW_POWERUP
+            sparky_logger.log("👟 SCARPE PRESE!")
 
         # --- MODULO COMBATTIMENTO ---
         # Nemici (Badniks)
@@ -138,7 +159,6 @@ class SparkyReward(gym.Wrapper):
             sparky_logger.log("👾 NEMICO SCONFITTO! +{r}", r=self.REW_ENEMY)
 
         # Boss
-        is_boss_active = any(info.get(f'obj{i}_id', 0) in self.BOSS_IDS for i in range(1, 61))
         if is_boss_active:
             if not self.boss_initialized:
                 self.prev_boss_hp = curr_boss_hp
@@ -172,6 +192,9 @@ class SparkyReward(gym.Wrapper):
         self.prev_score = curr_score
         self.prev_air = curr_air
         self.prev_lamppost = curr_lamppost
+        self.prev_invincible= curr_invinc
+        self.prev_shield = curr_shield
+        self.prev_shoes = curr_shoes
 
         # Divisione finale per scalare i valori verso PPO
         return obs, step_reward / 100.0, term, trunc, info

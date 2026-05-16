@@ -43,24 +43,32 @@ class RandomResetWrapper(gym.Wrapper):
         self.state_index = random.randint(0, len(states) - 1)
 
     def reset(self, **kwargs):
-        # Sceglie il prossimo stato
+        # 1. Sceglie il prossimo stato
         self.state_index = (self.state_index + 1) % len(self.states)
-        current_state = str(self.states[self.state_index])  # Forza a stringa per evitare TypeError
+        current_state = str(self.states[self.state_index])
 
-        # Carica lo stato nell'emulatore
+        # 2. Prepara l'emulatore a caricare quello stato
         try:
             self.env.unwrapped.load_state(current_state, retro.State.DEFAULT)
         except Exception as e:
-            # Se fallisce, prova senza il flag DEFAULT
             self.env.unwrapped.load_state(current_state)
 
-        # Tabula Rasa (Pulizia RAM)
+        # 3. ESEGUE IL RESET (Ora la RAM contiene i dati del salvataggio originale)
+        obs, info = self.env.reset(**kwargs)
+
+        # 4. TABULA RASA: Sovrascrive la RAM in tempo reale
         self.env.unwrapped.data.set_value("rings", 0)
         self.env.unwrapped.data.set_value("score", 0)
         self.env.unwrapped.data.set_value("level_end_bonus", 0)
         self.env.unwrapped.data.set_value("lives", 3)
 
-        return self.env.reset(**kwargs)
+        # 5. Aggiorna il dizionario 'info' così i Wrapper successivi leggono i dati azzerati
+        info['rings'] = 0
+        info['score'] = 0
+        info['level_end_bonus'] = 0
+        info['lives'] = 3
+
+        return obs, info
 
 
 def make_env(game, state_list, env_index=0):

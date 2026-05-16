@@ -102,7 +102,7 @@ class SparkyReward(gym.Wrapper):
 
         # INERZIA ESPONENZIALE (Impedisce saltelli inutili e fa superare i loop)
         if v_x > 300 and not in_air and (curr_x >= self.max_x - 50):
-            sparky_logger.log("👟 GRANDE VELOCITA'")
+            #sparky_logger.log("👟 GRANDE VELOCITA'")
             speed_ratio = v_x / 1000.0
             momentum_bonus = (speed_ratio ** 2) * self.REW_MOMENTUM_BASE
             step_reward += momentum_bonus

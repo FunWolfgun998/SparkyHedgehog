@@ -7,7 +7,7 @@ class SonicRAMWrapper(gym.Wrapper):
         super().__init__(env)
         self.NUM_RADAR_OBJECTS = num_radar_objects
         # 24 parametri base + (12 oggetti * 9 dati ognuno) = 132
-        total_shape = 24 + (self.NUM_RADAR_OBJECTS * 9)
+        total_shape = 20 + (self.NUM_RADAR_OBJECTS * 9)
         self.observation_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(total_shape,), dtype=np.float32)
 
     def reset(self, **kwargs):
@@ -19,10 +19,6 @@ class SonicRAMWrapper(gym.Wrapper):
         return self._extract_ram(info), reward, term, trunc, info
 
     def _extract_ram(self, info):
-        s_x, s_y = info.get('x', 0), info.get('y', 0)
-        status = int(info.get('status', 0))
-        pit_limit = info.get('y_limit_bottom', 0)
-
         # Categorie ID per classificazione rapida (Boss Esclusi dal Radar)
         BOSS_IDS = [61, 90, 117, 118, 121, 126]
         CAT = {
@@ -47,6 +43,11 @@ class SonicRAMWrapper(gym.Wrapper):
             "PLATFORMS": [6, 7, 8, 9, 11, 12, 15, 17, 18, 20, 21, 24, 26, 28, 33, 46, 47, 48, 49, 50, 52, 60, 62, 68,
                           77, 78, 79, 81, 82, 86, 89, 119, 122]
         }
+        s_x = info.get('x', 0)
+        s_y =info.get('y', 0)
+        status = int(info.get('status', 0))
+        camera_x = info.get('camera_x', 0)
+        pit_limit = info.get('y_limit_bottom', 0)
 
         # --- 1. FISICA, STATUS E BOSS (20 Dati) ---
         boss_hp = 0
@@ -55,45 +56,37 @@ class SonicRAMWrapper(gym.Wrapper):
         for j in range(1, 61):
             o_id = info.get(f'obj{j}_id')
             if o_id in BOSS_IDS:
-                temp_hp = info.get(f'obj{j}_hp', 0)
-                if temp_hp > 0:
-                    boss_hp = temp_hp / 8.0
+                    boss_hp = (info.get(f'obj{j}_hp', 0)) / 8.0
                     boss_dx = (info.get(f'obj{j}_x', 0) - s_x) / 500.0
                     boss_dy = (info.get(f'obj{j}_y', 0) - s_y) / 500.0
                     break
 
         ram = [
-            s_x / 10000.0, s_y / 4000.0,  # 1, 2
-            info.get('velocity_x', 0) / 2000.0,  # 3
-            info.get('velocity_y', 0) / 2000.0,  # 4
-            info.get('ground_speed', 0) / 2000.0,  # 5
-            info.get('angle', 0) / 255.0,  # 6
-            1.0 if info.get('rings', 0) > 0 else 0.0,  # 7
-            info.get('air_timer', 1800) / 1800.0,  # 8
-            (pit_limit - s_y) / 500.0,  # 9
-            1.0 if status & 1 else 0.0,  # 10: Left(B)
-            1.0 if status & 2 else 0.0,  # 11: Air(B)
-            1.0 if status & 4 else 0.0,  # 12: Roll(B)
-            1.0 if info.get('invincible', 0) > 0 else 0.0,  # 13
-            1.0 if info.get('shield', 0) > 0 else 0.0,  # 14
-            1.0 if info.get('shoes', 0) > 0 else 0.0,  # 15
-            1.0 if info.get('pushing_wall', 0) > 0 else 0.0,  # 16
-            info.get('zone', 0) / 6.0,  # 17
-            boss_hp,  # 18
-            boss_dx,  # 19
-            boss_dy  # 20
+            s_x / 10000.0,           # 1
+            s_y / 4000.0,            # 2
+            info.get('velocity_x', 0) / 2000.0,      # 3: Vel Orizzontale
+            info.get('velocity_y', 0) / 2000.0,      # 4: Vel Verticale
+            info.get('ground_speed', 0) / 2000.0,    # 5: Vel Terreno (Cruciale per loop)
+            info.get('angle', 0) / 255.0,            # 6: Angolo (0-255)
+            1.0 if status & 1 else 0.0,              # 7: Facing Left
+            1.0 if status & 2 else 0.0,              # 8: In Air
+            1.0 if status & 4 else 0.0,              # 9: Rolling
+            1.0 if info.get('rings', 0) > 0 else 0.0,  # 10: Binary "Has Armor"
+            1.0 if info.get('invincible', 0) > 0 else 0.0, # 11
+            1.0 if info.get('shield', 0) > 0 else 0.0,     # 12
+            1.0 if info.get('shoes', 0) > 0 else 0.0,      # 13
+            1.0 if info.get('pushing_wall', 0) > 0 else 0.0, # 14: Contro muro
+            boss_hp,                                 # 15
+            boss_dx,                                 # 16
+            boss_dy,                                 # 17
+            (s_x - camera_x) / 320.0,  # 18: Screen Relative X
+            max(0.0, (pit_limit - s_y) / 500.0),  # 19: Pit Distance
+            info.get('act', 0) / 2.0  # 20: Act Number (1, 2 o 3)
         ]
-        # --- 2. AMBIENTE (4 Dati) ---
-        dist_to_death = pit_limit - s_y
-        pit_danger = max(0.0, 1.0 - (dist_to_death / 200.0))
-        falling_danger = 1.0 if (info.get('velocity_y', 0) > 200 and (status & 2)) else 0.0
-        cam_x = info.get('camera_x', 0)
-
-        ram.extend([pit_danger, falling_danger, 1.0 if (status & 64) else 0.0, (s_x - cam_x) / 320.0])
 
         # --- 3. RADAR OGGETTI (Esclusi Boss e Sonic) ---
         radar_ai = []
-        max_dist = 350.0
+        MAX_DIST_CULLING = ((190 ** 2) + (180 ** 2)) ** 0.5  # Logica aggiornata
 
         for i in range(1, 61):
             o_id = info.get(f'obj{i}_id', 0)
@@ -102,7 +95,7 @@ class SonicRAMWrapper(gym.Wrapper):
             dx = info.get(f'obj{i}_x', 0) - s_x
             dy = info.get(f'obj{i}_y', 0) - s_y
             dist = (dx ** 2 + dy ** 2) ** 0.5
-            if dist > max_dist: continue
+            if dist > MAX_DIST_CULLING: continue
 
             # Flags di categoria
             l, e, ph, v, it, p = 0, 0, 0, 0, 0, 0
@@ -123,10 +116,12 @@ class SonicRAMWrapper(gym.Wrapper):
             else:
                 continue
 
+            final_score = score * (1.0 - min(dist / MAX_DIST_CULLING, 1.0) * 0.6) * (1.0 if dx > -15 else 0.2)
+
             radar_ai.append({
                 'id': o_id, 'dx': dx / 500, 'dy': dy / 500, 'dist': dist,
                 'l': l, 'e': e, 'ph': ph, 'v': v, 'it': it, 'p': p,
-                'score': score * (1.0 - (dist / max_dist) * 0.6)
+                'score': final_score
             })
 
         radar_ai = sorted(radar_ai, key=lambda x: x['score'], reverse=True)[:self.NUM_RADAR_OBJECTS]

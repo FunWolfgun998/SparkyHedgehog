@@ -36,7 +36,7 @@ def main():
         )
     )
 
-    MODEL_NAME = ""
+    MODEL_NAME = "Sparky_run_5_37000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
@@ -45,7 +45,8 @@ def main():
     if os.path.isfile(RESUME_MODEL):
         print(f"♻️ Ripristino modello esistente: {MODEL_NAME}")
         model = PPO.load(RESUME_MODEL, env=envs, device="cuda",
-                         learning_rate=lr_schedule, ent_coef=0.02)
+                         learning_rate=lr_schedule, ent_coef=0.02, gamma = 0.998,
+                         tensorboard_log=config.LOG_DIR)
     else:
         print("🆕 Nessun modello trovato. Creazione di una nuova rete neurale...")
         model = PPO(

@@ -2,7 +2,6 @@ import sys
 import os
 
 # --- FIX PERCORSI E IMPORTAZIONI ---
-# Aggiungiamo la root directory al path di Python così trova 'core' e 'config'
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT_DIR)
 
@@ -18,14 +17,15 @@ from core.hud import SparkyHUD
 import config
 
 # --- CONFIGURAZIONE ---
-MODEL_NAME = "Sparky_run_3_16000000.zip"  # <-- INSERISCI QUI IL NOME DEL SALVATAGGIO CON IL .ZIP
+MODEL_NAME = "Sparky_run_5_34000000.zip"  # Il tuo ultimo modello
 MODEL_PATH = os.path.join(config.SAVE_PATH, MODEL_NAME)
-TEST_STATE = "GreenHillZone.Act1"
+TEST_STATE = "GHZ_Custom_11"
 
 # --- OPZIONI VIDEO ---
 SAVE_VIDEO = True
-os.makedirs(config.VIDEO_DIR, exist_ok=True) # Crea la cartella se non esiste
+os.makedirs(config.VIDEO_DIR, exist_ok=True)
 VIDEO_NAME = os.path.join(config.VIDEO_DIR, f"Test_{MODEL_NAME.replace('.zip', '')}.mp4")
+
 
 def test():
     print(f"\n--- 🎬 TEST E REGISTRAZIONE VIDEO ---")
@@ -35,13 +35,16 @@ def test():
         print(f"❌ ERRORE: File non trovato!")
         return
 
-    # --- CHECK HARDWARE UNIVERSALE ---
-    if torch.cuda.is_available(): device = "cuda"
-    elif torch.backends.mps.is_available(): device = "mps"
-    else: device = "cpu"
+    # Check Hardware
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
     print(f"🖥️  Motore di calcolo: {device.upper()}")
 
-    # Setup Ambiente
+    # Setup Ambiente (Uguale al training per non confondere l'IA)
     env = retro.make(game=config.GAME_NAME, state=TEST_STATE, render_mode="rgb_array")
     env = SparkyDiscretizer(env)
     env = SonicRAMWrapper(env)
@@ -57,26 +60,22 @@ def test():
     obs = env.reset()
     video_writer = None
     hud = SparkyHUD()
-    scale = 3
 
     print("\nPremere 'ESC' sulla finestra video per interrompere e salvare.")
 
-    done = False
-    while not done:
+    step_counter = 0
+
+    while True:
         action, _ = model.predict(obs, deterministic=True)
-        obs, reward, done, info = env.step(action)
+        obs, reward, done_array, info = env.step(action)
         current_info = info[0]
 
-        # Estrai l'immagine grezza
+        # Render e HUD
         raw_frame = env.render()
-
-        # Applica l'HUD professionale!
         frame_with_hud = hud.overlay(raw_frame, current_info)
-
-        # Converti per OpenCV
         frame_bgr = cv2.cvtColor(frame_with_hud, cv2.COLOR_RGB2BGR)
 
-        # Video Recorder (Ora registra il frame con l'HUD ad alta risoluzione)
+        # Video Recorder
         if SAVE_VIDEO and video_writer is None:
             h, w, _ = frame_bgr.shape
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -88,17 +87,26 @@ def test():
 
         cv2.imshow("Shally Play Test", frame_bgr)
 
-        if cv2.waitKey(1) & 0xFF == 27:
+        # 16ms = 60 FPS. Se metti 1ms, il video schizza via a 1000 FPS invisibili!
+        key = cv2.waitKey(16) & 0xFF
+
+        if key == 27:
+            print("\n🛑 Interrotto dall'utente (Rilevato tasto ESC).")
             break
-        if done:
-            print("🏁 Episodio completato.")
+
+        # Controlliamo il vero valore vettoriale!
+        if done_array[0]:
+            print(f"\n🏁 Episodio terminato (Morte o Fine Livello) dopo {step_counter} frames.")
             break
+
+        step_counter += 1
 
     env.close()
     if video_writer:
         video_writer.release()
         print(f"✅ Video salvato in: {VIDEO_NAME}")
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     test()

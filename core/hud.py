@@ -70,19 +70,33 @@ class SparkyHUD:
         base_data = info.get('ai_input_vector', [0.0] * 24)
         cv2.putText(img, "IA BASE SENSORS", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.55, self.c_title, 2)
 
-        # Nomi puliti senza numeri davanti
         labels = [
-            "X Norm", "Y Norm", "Vel X", "Vel Y", "G-Speed", "Angle",
-            "Rings(B)", "Air Timer", "Pit Dist", "Left(B)", "Air(B)",
-            "Roll(B)", "Invinc(B)", "Shield(B)", "Shoes(B)", "Wall(B)",
-            "Zone", "Boss HP", "Boss DX", "Boss DY", "Danger Pit",
-            "Danger Fall", "Water(B)", "Screen X"
+            "X Position",  # 0
+            "Y Position",  # 1
+            "Vel X",  # 2
+            "Vel Y",  # 3
+            "G-Speed",  # 4
+            "Angle",  # 5
+            "Left(B)",  # 6 (status & 1)
+            "In Air(B)",  # 7 (status & 2)
+            "Rolling(B)",  # 8 (status & 4)
+            "Armor(B)",  # 9 (rings > 0)
+            "Invinc(B)",  # 10
+            "Shield(B)",  # 11
+            "Shoes(B)",  # 12
+            "Wall(B)",  # 13
+            "Boss HP",  # 14
+            "Boss DX",  # 15
+            "Boss DY",  # 16
+            "Screen X",  # 17 (Relativo camera)
+            "Pit Dist",  # 18 (Distanza vuoto)
+            "Act Num"  # 19 (Atto 1, 2 o 3)
         ]
 
         y_start = 60
         y_step = 24
 
-        for i in range(min(24, len(base_data))):
+        for i in range(min(20, len(base_data))):
             val = base_data[i]
             y_pos = y_start + (i * y_step)
 

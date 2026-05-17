@@ -3,6 +3,7 @@ import random
 import shutil
 import gymnasium as gym
 import stable_retro as retro
+import numpy as np
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
 import config
@@ -53,23 +54,23 @@ class RandomResetWrapper(gym.Wrapper):
         except Exception as e:
             self.env.unwrapped.load_state(current_state)
 
-        # 3. ESEGUE IL RESET (Ora la RAM contiene i dati del salvataggio originale)
+        self._clear_ram_values()
+
+        # Eseguiamo il reset dell'emulatore
         obs, info = self.env.reset(**kwargs)
 
-        # 4. TABULA RASA: Sovrascrive la RAM in tempo reale
+        # TRUCCO: Eseguiamo 2 step con "nessuna azione" per stabilizzare la RAM
+        # Questo pulisce i mirror interni del gioco che potrebbero ripristinare i valori
+        for _ in range(2):
+            obs, _, _, _, info = self.env.step(np.zeros(12, dtype=np.int8))
+            self._clear_ram_values()  # Riaffermiamo il reset
+
+        return obs, info
+    def _clear_ram_values(self):
+        """Forza i valori critici a zero nel motore del gioco"""
         self.env.unwrapped.data.set_value("rings", 0)
         self.env.unwrapped.data.set_value("score", 0)
         self.env.unwrapped.data.set_value("level_end_bonus", 0)
-        self.env.unwrapped.data.set_value("lives", 3)
-
-        # 5. Aggiorna il dizionario 'info' così i Wrapper successivi leggono i dati azzerati
-        info['rings'] = 0
-        info['score'] = 0
-        info['level_end_bonus'] = 0
-        info['lives'] = 3
-
-        return obs, info
-
 
 def make_env(game, state_list, env_index=0):
     def _init():

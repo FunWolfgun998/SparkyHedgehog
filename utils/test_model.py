@@ -17,9 +17,9 @@ from core.hud import SparkyHUD
 import config
 
 # --- CONFIGURAZIONE ---
-MODEL_NAME = "Sparky_run_8_228000000.zip"  # Il tuo ultimo modello
+MODEL_NAME = "Sparky_run_9_238000000.zip"  # Il tuo ultimo modello
 MODEL_PATH = os.path.join(config.SAVE_PATH, MODEL_NAME)
-TEST_STATE = "GreenHillZone.Act3"
+TEST_STATE = "GreenHillZone.Act2"
 
 # --- OPZIONI VIDEO ---
 SAVE_VIDEO = True

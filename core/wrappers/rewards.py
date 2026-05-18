@@ -15,14 +15,14 @@ class SparkyReward(gym.Wrapper):
         self.REW_MOMENTUM_BASE = 5.0  # Mantenuta per la Grande Velocità
 
         # --- 2. SURVIVAL & COMBAT ---
-        self.PEN_DEATH = -600.0  # Penalità assoluta se perde una VITA
+        self.PEN_DEATH = -300.0  # Penalità assoluta se perde una VITA
         self.PEN_DAMAGE = -70.0  # Penalità se perde anelli (ma sopravvive)
         self.PEN_VULNERABLE = -0.5  # MALUS COSTANTE se ha 0 ANELLI (Incentiva la raccolta)
         self.REW_FIRST_RING = 50.0
 
         self.REW_ENEMY = 30.0
         self.REW_BOSS_HIT = 800.0
-        self.REW_BOSS_ATTACK = 3.0  # Premio se salta sotto il boss (insegna il movimento)
+        self.REW_BOSS_ATTACK = 20.0  # Premio se salta sotto il boss (insegna il movimento)
         self.REW_BOSS_DEFEAT = 8000.0
         self.REW_CAPSULE = 1600.0  # Premio per avvicinarsi alla gabbia
 
@@ -228,7 +228,7 @@ class SparkyReward(gym.Wrapper):
                 # 2. ISTINTO DI SCHIVATA (Anti-Paura)
                 # Premio basso (0.5) per non farlo "farmare". Gli dice solo: "Sei al sicuro qui".
                 if in_air and ball_dy is not None and ball_dy > 0:
-                    step_reward += 0.5
+                    step_reward += 20
 
                 # 3. Saltando in su (v_y negativo grave) ed è orizzontalmente vicino al boss...
                 if in_air and v_y < -300 and abs(boss_dx) < 0.25 and boss_dy < 0:

@@ -36,11 +36,11 @@ def main():
         )
     )
 
-    MODEL_NAME = "Sparky_run_7_148000000.zip"
+    MODEL_NAME = "Sparky_run_8_228000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
-    lr_schedule = linear_schedule(7e-5, 1e-5)  # Il passo si fa più piccolo e preciso
+    lr_schedule = linear_schedule(3e-5, 1e-6)  # Il passo si fa più piccolo e preciso
 
     if os.path.isfile(RESUME_MODEL):
         print(f"♻️ Ripristino modello esistente: {MODEL_NAME}")
@@ -70,7 +70,7 @@ def main():
     director = SparkyDirectorCallback()
 
     model.learn(
-        total_timesteps=80_000_000,
+        total_timesteps=50_000_000,
         callback=[checkpoint, director],
         tb_log_name=config.CURRENT_RUN_NAME,
         reset_num_timesteps=False

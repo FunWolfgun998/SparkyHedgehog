@@ -88,9 +88,22 @@ class SonicRAMWrapper(gym.Wrapper):
         radar_ai = []
         MAX_DIST_CULLING = ((190 ** 2) + (180 ** 2)) ** 0.5  # Logica aggiornata
 
+        real_ball_y = -9999
+        real_capsule_y = 9999
+        for i in range(1, 61):
+            temp_id = info.get(f'obj{i}_id', 0)
+            temp_y = info.get(f'obj{i}_y', 0)
+            if temp_id == 72 and temp_y > real_ball_y:
+                real_ball_y = temp_y
+            if temp_id == 62 and temp_y < real_capsule_y:
+                real_capsule_y = temp_y
+                
         for i in range(1, 61):
             o_id = info.get(f'obj{i}_id', 0)
-            if o_id in [0, 1] or o_id in BOSS_IDS: continue
+            o_y = info.get(f'obj{i}_y', 0)
+
+            if o_id == 72 and o_y != real_ball_y: continue
+            if o_id == 62 and o_y != real_capsule_y: continue
 
             dx = info.get(f'obj{i}_x', 0) - s_x
             dy = info.get(f'obj{i}_y', 0) - s_y

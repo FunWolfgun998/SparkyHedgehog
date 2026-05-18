@@ -131,23 +131,6 @@ class SparkyReward(gym.Wrapper):
 
         if not in_air:
             self.spring_active = False
-            # LOGICA LOOP DELLA MORTE
-            # Angolo tra 45 e 215 (scala Sonic 0-255: ~32 a ~150)
-            if 32 < angle < 150:
-                self.loop_potential = True
-                if 70 < angle < 110 and g_speed > 450:  # È quasi a testa in giù con buona velocità
-                    self.reached_top = True
-
-                if is_jump_action:
-                    step_reward += self.PEN_JUMP_LOOP
-                    sparky_logger.log("❌ SALTO NEL LOOP!")
-            else:
-                if self.loop_potential and self.reached_top:
-                    if curr_x > self.max_x:  # È uscito dal loop in avanti
-                        step_reward += self.REW_LOOP_SUCCESS
-                        sparky_logger.log("🌀 LOOP COMPLETATO! +{r}", r=self.REW_LOOP_SUCCESS)
-                    self.loop_potential = self.reached_top = False
-
             # INERZIA ESPONENZIALE (Grande Velocità a terra)
             if g_speed > 1400 and (curr_x >= self.max_x - 50):
                 step_reward += (g_speed / 1000.0) ** 2 * self.REW_MOMENTUM_BASE
@@ -177,7 +160,22 @@ class SparkyReward(gym.Wrapper):
                 step_reward += self.PEN_STUCK_FATAL
                 trunc = True
                 sparky_logger.log("🛑 FATAL STUCK! Reset episodio.")
+        # LOGICA LOOP DELLA MORTE
+        # Angolo tra 45 e 215 (scala Sonic 0-255: ~32 a ~150)
+        if 32 < angle < 150:
+            self.loop_potential = True
+            if 70 < angle < 110 and g_speed > 450:  # È quasi a testa in giù con buona velocità
+                self.reached_top = True
 
+            if is_jump_action:
+                step_reward += self.PEN_JUMP_LOOP
+                sparky_logger.log("❌ SALTO NEL LOOP!")
+        else:
+            if self.loop_potential and self.reached_top:
+                if curr_x > self.max_x:  # È uscito dal loop in avanti
+                    step_reward += self.REW_LOOP_SUCCESS
+                    sparky_logger.log("🌀 LOOP COMPLETATO! +{r}", r=self.REW_LOOP_SUCCESS)
+                self.loop_potential = self.reached_top = False
         # --- 2. MODULO SOPRAVVIVENZA & POWER-UPS ---
 
         # LOGICA MORTE VS DANNO (Correggendo il problema delle vite)

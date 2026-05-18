@@ -36,7 +36,7 @@ def main():
         )
     )
 
-    MODEL_NAME = "Sparky_run_6_78000000.zip"
+    MODEL_NAME = "Sparky_run_6_148000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici

@@ -32,7 +32,7 @@ def get_next_index():
 
 
 def run_state_manager():
-    env = retro.make(game=config.GAME_NAME, state='GreenHillZone.Act1', render_mode="rgb_array")
+    env = retro.make(game=config.GAME_NAME, state='GreenHillZone.Act3', render_mode="rgb_array")
     obs, _ = env.reset()
 
     pygame.init()

@@ -34,13 +34,13 @@ class SonicRAMWrapper(gym.Wrapper):
             "PHYSICS": [65, 41, 66, 30, 25, 71, 75, 76],
 
             # Checkpoint, Cartello fine livello, Bolla d'aria
-            "VITAL": [10, 13, 14],
+            "VITAL": [10, 13, 14, 62],
 
             # Anelli, Monitor TV
             "ITEMS": [37, 38],
 
             # Piattaforme, Ponti, Tronchi e la Capsula Prigione (62)
-            "PLATFORMS": [6, 7, 8, 9, 11, 12, 15, 17, 18, 20, 21, 24, 26, 28, 33, 46, 47, 48, 49, 50, 52, 60, 62, 68,
+            "PLATFORMS": [6, 7, 8, 9, 11, 12, 15, 17, 18, 20, 21, 24, 26, 28, 33, 46, 47, 48, 49, 50, 52, 60, 68,
                           77, 78, 79, 81, 82, 86, 89, 119, 122]
         }
         s_x = info.get('x', 0)

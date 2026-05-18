@@ -21,14 +21,15 @@ class SparkyReward(gym.Wrapper):
         self.REW_FIRST_RING = 50.0
 
         self.REW_ENEMY = 30.0
-        self.REW_BOSS_HIT = 500.0
-        self.REW_BOSS_PROXIMITY = 0.5
+        self.REW_BOSS_HIT = 800.0
+        self.REW_BOSS_ATTACK = 2.0  # Premio se salta sotto il boss (insegna il movimento)
         self.REW_BOSS_DEFEAT = 10000.0
+        self.REW_CAPSULE = 500.0  # Premio per avvicinarsi alla gabbia
 
         # --- 3. ESPLORAZIONE, LOOP & VITAL ---
         self.REW_CHECKPOINT = 1000.0
         self.REW_SPRING = 50.0
-        self.REW_POWERUP = 150.0  # Aggiunta variabile mancante!
+        self.REW_POWERUP = 150.0
         self.PEN_STUCK_WARNING = -10.0
         self.PEN_STUCK_FATAL = -300.0
         self.PEN_IDLE = -2.0
@@ -74,12 +75,13 @@ class SparkyReward(gym.Wrapper):
         curr_y = info.get('y', 0)
         v_x = info.get('velocity_x', 0)
         v_y = info.get('velocity_y', 0)
-        g_speed = info.get('ground_speed', 0)  # Nuova
-        angle = info.get('angle', 0)  # Nuova
+        g_speed = info.get('ground_speed', 0)
+        angle = info.get('angle', 0)
         c_rings = info.get('rings', 0)
         curr_score = info.get('score', 0)
         curr_lamppost = info.get('lamppost_id', 0)
         curr_lives = info.get('lives', 3)  # Estrazione vite
+        radar_slots = info.get('ai_radar_slots', [])
 
         ai_vec = info.get('ai_input_vector', [])
 
@@ -125,6 +127,7 @@ class SparkyReward(gym.Wrapper):
         if curr_x > self.max_x:
             step_reward += (curr_x - self.max_x) * self.REW_PROGRESS
             self.max_x = curr_x
+
         elif curr_x < self.prev_x - 1:
             if not is_boss_active:  # Nessuna penalità se sta combattendo il boss!
                 step_reward += self.PEN_BACKTRACK
@@ -139,7 +142,7 @@ class SparkyReward(gym.Wrapper):
 
             if abs(v_x) < 50:
                 step_reward += self.PEN_IDLE
-                #sparky_logger.log("🐢 FERMO/COVARDO! Penalità in corso.")
+                #sparky_logger.log("🐢 FERMO! Penalità in corso.")
 
         # LOGICA TRAMPOLINI (Basata puramente sulla fisica)
         if v_y <= -2200 and not self.spring_active:
@@ -155,10 +158,10 @@ class SparkyReward(gym.Wrapper):
             self.stuck_counter += 1
             if self.stuck_counter == 120:
                 step_reward += self.PEN_STUCK_WARNING
-                sparky_logger.log("⚠️ STUCK WARNING! (2s)")
+                #sparky_logger.log("⚠️ STUCK WARNING! (2s)")
             elif self.stuck_counter >= 360:
-                step_reward += self.PEN_STUCK_FATAL
                 trunc = True
+                step_reward += self.PEN_STUCK_FATAL
                 sparky_logger.log("🛑 FATAL STUCK! Reset episodio.")
         # LOGICA LOOP DELLA MORTE
         # Angolo tra 45 e 215 (scala Sonic 0-255: ~32 a ~150)
@@ -166,23 +169,23 @@ class SparkyReward(gym.Wrapper):
             self.loop_potential = True
             if 70 < angle < 110 and g_speed > 450:  # È quasi a testa in giù con buona velocità
                 self.reached_top = True
-
             if is_jump_action:
                 step_reward += self.PEN_JUMP_LOOP
-                sparky_logger.log("❌ SALTO NEL LOOP!")
+                #sparky_logger.log("❌ SALTO NEL LOOP!")
         else:
             if self.loop_potential and self.reached_top:
                 if curr_x > self.max_x:  # È uscito dal loop in avanti
                     step_reward += self.REW_LOOP_SUCCESS
                     sparky_logger.log("🌀 LOOP COMPLETATO! +{r}", r=self.REW_LOOP_SUCCESS)
                 self.loop_potential = self.reached_top = False
-        # --- 2. MODULO SOPRAVVIVENZA & POWER-UPS ---
 
+        # --- 2. MODULO SOPRAVVIVENZA & POWER-UPS ---
         # LOGICA MORTE VS DANNO (Correggendo il problema delle vite)
         # Se le vite diminuiscono, è matematicamente morto (vuoto o no anelli)
         if curr_lives < self.prev_lives:
             step_reward += self.PEN_DEATH
             sparky_logger.log("💀 VITA PERSA! (Morte rilevata) -{p}", p=abs(self.PEN_DEATH))
+            trunc = True
         else:
             # Se è vivo, controlliamo se ha perso anelli (danno leggero)
             if c_rings < self.prev_rings:
@@ -195,6 +198,7 @@ class SparkyReward(gym.Wrapper):
                     sparky_logger.log("🛡️ ARMATURA ATTIVA (Primo Anello)! +{s}", s=self.REW_FIRST_RING)
                 else:
                     step_reward += (c_rings - self.prev_rings) * 1.0  # 1 punto per anello extra
+            if c_rings == 0: step_reward += self.PEN_VULNERABLE
 
         # Power-Ups
         if curr_invinc > self.prev_invincible:
@@ -208,23 +212,15 @@ class SparkyReward(gym.Wrapper):
             sparky_logger.log("👟 SCARPE PRESE!")
 
         # --- 3. MODULO COMBATTIMENTO ---
-        # Nemici (Badniks)
-        score_gain = curr_score - self.prev_score
-        if score_gain >= 100:
-            step_reward += self.REW_ENEMY
-            sparky_logger.log("👾 NEMICO SCONFITTO! +{r}", r=self.REW_ENEMY)
 
         if is_boss_active:
             if not self.boss_initialized:
                 self.prev_boss_hp = curr_boss_hp
                 self.boss_initialized = True
             else:
-                # Distanza euclidea dal Boss usando i dati del Radar
-                dist_from_boss = (boss_dx ** 2 + boss_dy ** 2) ** 0.5
-
-                # Se è molto vicino al boss (sotto di lui o sta per colpirlo), riceve punti costanti
-                if dist_from_boss < 0.25:
-                    step_reward += self.REW_BOSS_PROXIMITY
+                # Saltando in su (v_y negativo grave) ed è orizzontalmente vicino al boss...
+                if in_air and v_y < -200 and abs(boss_dx) < 0.3:
+                    step_reward += self.REW_BOSS_ATTACK
 
                 # Boss Colpito
                 if curr_boss_hp < self.prev_boss_hp:
@@ -237,9 +233,22 @@ class SparkyReward(gym.Wrapper):
                         sparky_logger.log("👑 BOSS SCONFITTO!!! +{r}", r=self.REW_BOSS_DEFEAT)
 
                 self.prev_boss_hp = curr_boss_hp
-
         else:
             self.boss_initialized = False
+
+            for obj in radar_slots:
+                if obj.get('id') == 62:  # 62 è la Capsula
+                    # Se ci sta andando incontro o ci salta sopra
+                    if obj['dist'] < 100:
+                        step_reward += self.REW_CAPSULE
+                        sparky_logger.log("🔓 CAPSULA IN VISTA! Vai!")
+                    break
+
+        # Nemici (Badniks)
+        score_gain = curr_score - self.prev_score
+        if score_gain >= 100:
+            step_reward += self.REW_ENEMY
+            sparky_logger.log("👾 NEMICO SCONFITTO! +{r}", r=self.REW_ENEMY)
 
             # --- 4. MODULO INTERAZIONE & TERMINAZIONE ---
         if curr_lamppost > self.prev_lamppost:

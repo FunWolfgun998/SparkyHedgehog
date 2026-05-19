@@ -36,11 +36,11 @@ def main():
         )
     )
 
-    MODEL_NAME = "Sparky_run_8_228000000.zip"
+    MODEL_NAME = "Sparky_run_10_332000000.zip"
     RESUME_MODEL = os.path.join(config.SAVE_PATH, MODEL_NAME)
 
     # Parametri di addestramento dinamici
-    lr_schedule = linear_schedule(5e-5, 1e-6)  # Il passo si fa più piccolo e preciso
+    lr_schedule = linear_schedule(6e-5, 1e-6)  # Il passo si fa più piccolo e preciso
 
     if os.path.isfile(RESUME_MODEL):
         print(f"♻️ Ripristino modello esistente: {MODEL_NAME}")

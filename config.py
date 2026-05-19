@@ -12,12 +12,12 @@ VIDEO_DIR = os.path.join(ROOT_DIR, "utils/video_models")
 CUSTOM_STATES_DIR = os.path.join(ROOT_DIR, "train_states")
 CUSTOM_CAPTURE_STATES_DIR = os.path.join(ROOT_DIR, "utils/captured_states")
 SAVE_PATH = os.path.join(ROOT_DIR, "models/Sparky 4_0")
-SCREENSHOT_DIR = os.path.join(LOG_DIR, "screenshots")  # <-- NUOVA CARTELLA SCREENSHOT
+SCREENSHOT_DIR = os.path.join(LOG_DIR, "screenshots")
 SAVE_TEXT_LOGS = True
 
 # --- AUTOMAZIONE RUN (TensorBoard Continuity) ---
 os.makedirs(LOG_DIR, exist_ok=True)
-os.makedirs(SCREENSHOT_DIR, exist_ok=True)  # <-- CREA LA CARTELLA
+os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 run_folders = glob.glob(os.path.join(LOG_DIR, "Round_*"))
 RUN_NUMBER = len(run_folders) + 1
 CURRENT_RUN_NAME = f"Round_{RUN_NUMBER}"

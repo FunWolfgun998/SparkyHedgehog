@@ -15,16 +15,16 @@ class SparkyReward(gym.Wrapper):
         self.REW_MOMENTUM_BASE = 5.0  # Mantenuta per la Grande Velocità
 
         # --- 2. SURVIVAL & COMBAT ---
-        self.PEN_DEATH = -300.0  # Penalità assoluta se perde una VITA
+        self.PEN_DEATH = -600.0  # Penalità assoluta se perde una VITA
         self.PEN_DAMAGE = -70.0  # Penalità se perde anelli (ma sopravvive)
         self.PEN_VULNERABLE = -0.5  # MALUS COSTANTE se ha 0 ANELLI (Incentiva la raccolta)
         self.REW_FIRST_RING = 50.0
 
         self.REW_ENEMY = 30.0
-        self.REW_BOSS_HIT = 800.0
-        self.REW_BOSS_ATTACK = 20.0  # Premio se salta sotto il boss (insegna il movimento)
-        self.REW_BOSS_DEFEAT = 8000.0
-        self.REW_CAPSULE = 1600.0  # Premio per avvicinarsi alla gabbia
+        self.REW_BOSS_HIT = 1500.0
+        self.REW_BOSS_ATTACK = 2.0  # Premio se salta sotto il boss (insegna il movimento)
+        self.REW_BOSS_DEFEAT = 15000.0
+        self.REW_CAPSULE = 2000.0  # Premio per avvicinarsi alla gabbia
 
         # --- 3. ESPLORAZIONE, LOOP & VITAL ---
         self.REW_CHECKPOINT = 1000.0
@@ -220,9 +220,11 @@ class SparkyReward(gym.Wrapper):
             else:
                 # 1. CERCA LA PALLA SUL RADAR
                 ball_dy = None
+                ball_dx = None
                 for obj in radar_slots:
                     if obj.get('id') == 72:  # 72 è la vera Boss Wrecking Ball
                         ball_dy = obj['dy']
+                        ball_dx = obj['dx']
                         break
 
                 # 2. ISTINTO DI SCHIVATA (Anti-Paura)

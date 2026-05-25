@@ -15,13 +15,14 @@ class SparkyReward(gym.Wrapper):
         self.REW_MOMENTUM_BASE = 5.0  # Mantenuta per la Grande Velocità
 
         # --- 2. SURVIVAL & COMBAT ---
-        self.PEN_DEATH = -600.0  # Penalità assoluta se perde una VITA
+        self.PEN_DEATH = -3000.0  # Penalità assoluta se perde una VITA
+        self.PEN_COWARDICE = -5.0
         self.PEN_DAMAGE = -70.0  # Penalità se perde anelli (ma sopravvive)
         self.PEN_VULNERABLE = -0.5  # MALUS COSTANTE se ha 0 ANELLI (Incentiva la raccolta)
         self.REW_FIRST_RING = 50.0
 
         self.REW_ENEMY = 30.0
-        self.REW_BOSS_HIT = 1500.0
+        self.REW_BOSS_HIT = 400.0
         self.REW_BOSS_ATTACK = 2.0  # Premio se salta sotto il boss (insegna il movimento)
         self.REW_BOSS_DEFEAT = 15000.0
         self.REW_CAPSULE = 2000.0  # Premio per avvicinarsi alla gabbia
@@ -59,6 +60,7 @@ class SparkyReward(gym.Wrapper):
         self.loop_potential = False
         self.reached_top = False
         self.spring_active = False
+        self.capsule_opened = False
 
     def reset(self, **kwargs):
         self._init_vars()
@@ -80,7 +82,7 @@ class SparkyReward(gym.Wrapper):
         c_rings = info.get('rings', 0)
         curr_score = info.get('score', 0)
         curr_lamppost = info.get('lamppost_id', 0)
-        curr_lives = info.get('lives', 3)  # Estrazione vite
+        curr_lives = info.get('lives', 3)
         radar_slots = info.get('ai_radar_slots', [])
 
         ai_vec = info.get('ai_input_vector', [])
@@ -137,7 +139,6 @@ class SparkyReward(gym.Wrapper):
             # INERZIA ESPONENZIALE (Grande Velocità a terra)
             if g_speed > 1400 and (curr_x >= self.max_x - 50):
                 step_reward += (g_speed / 1000.0) ** 2 * self.REW_MOMENTUM_BASE
-                # Commentato il logger per non spammare la console a 60 frame al secondo
                 #sparky_logger.log("👟 GRANDE VELOCITA' +{s}", s= momentum_bonus)
 
             if abs(v_x) < 50:
@@ -212,36 +213,24 @@ class SparkyReward(gym.Wrapper):
             sparky_logger.log("👟 SCARPE PRESE!")
 
         # --- 3. MODULO COMBATTIMENTO ---
-
         if is_boss_active:
             if not self.boss_initialized:
                 self.prev_boss_hp = curr_boss_hp
                 self.boss_initialized = True
             else:
-                # 1. CERCA LA PALLA SUL RADAR
-                ball_dy = None
-                ball_dx = None
-                for obj in radar_slots:
-                    if obj.get('id') == 72:  # 72 è la vera Boss Wrecking Ball
-                        ball_dy = obj['dy']
-                        ball_dx = obj['dx']
-                        break
+                # 1. PENALITA' CODARDIA (Pavimento che brucia negli angolini!)
+                if abs(boss_dx) > 0.45:
+                    step_reward += self.PEN_COWARDICE
 
-                # 2. ISTINTO DI SCHIVATA (Anti-Paura)
-                # Premio basso (0.5) per non farlo "farmare". Gli dice solo: "Sei al sicuro qui".
-                if in_air and ball_dy is not None and ball_dy > 0:
-                    step_reward += 20
+                # 2. IL MIRINO LASER (L'istinto d'attacco guidato)
+                if in_air and v_y < -150 and abs(boss_dx) < 0.15 and boss_dy < 0:
+                    step_reward += self.REW_BOSS_ATTACK
 
-                # 3. Saltando in su (v_y negativo grave) ed è orizzontalmente vicino al boss...
-                if in_air and v_y < -300 and abs(boss_dx) < 0.25 and boss_dy < 0:
-                    step_reward += self.REW_BOSS_ATTACK  # Es: +2.0 a frame
-
-                # 4. COLPO A SEGNO (La Conferma)
+                # 3. COLPO A SEGNO
                 if curr_boss_hp < self.prev_boss_hp:
                     step_reward += self.REW_BOSS_HIT
                     sparky_logger.log("🎯 BOSS COLPITO! +{r}", r=self.REW_BOSS_HIT)
 
-                    # 5. BOSS MORTO! (Il Trionfo)
                     if curr_boss_hp <= 0:
                         step_reward += self.REW_BOSS_DEFEAT
                         sparky_logger.log("👑 BOSS SCONFITTO!!! +{r}", r=self.REW_BOSS_DEFEAT)
@@ -250,21 +239,22 @@ class SparkyReward(gym.Wrapper):
         else:
             self.boss_initialized = False
 
-            # 6. LA CAPSULA (Scende quando il boss muore)
-            for obj in radar_slots:
-                if obj.get('id') == 62:  # 62 è la Capsula Prigione
-                    # Deve schiacciarla dall'alto: allineato orizzontalmente e fisicamente sopra
-                    if abs(obj['dx']) < 0.2 and obj['dy'] > 0:
-                        step_reward += self.REW_CAPSULE
-                        # sparky_logger.log("🔓 SONIC SOPRA LA CAPSULA! +{r}", r=self.REW_CAPSULE)
-                    break
+            # 4. LA CAPSULA (Senza farming)
+            if not self.capsule_opened:
+                for obj in radar_slots:
+                    if obj.get('id') == 62:
+                        if abs(obj['dx']) < 0.15 and obj['dy'] > 0:
+                            step_reward += self.REW_CAPSULE
+                            self.capsule_opened = True
+                            sparky_logger.log("🔓 CAPSULA RAGGIUNTA! +{r}", r=self.REW_CAPSULE)
+                        break
         # Nemici (Badniks)
         score_gain = curr_score - self.prev_score
         if score_gain >= 100:
             step_reward += self.REW_ENEMY
             sparky_logger.log("👾 NEMICO SCONFITTO! +{r}", r=self.REW_ENEMY)
 
-            # --- 4. MODULO INTERAZIONE & TERMINAZIONE ---
+        # --- 4. MODULO INTERAZIONE & TERMINAZIONE ---
         if curr_lamppost > self.prev_lamppost:
             step_reward += self.REW_CHECKPOINT
             sparky_logger.log("🚩 CHECKPOINT RAGGIUNTO! +{r}", r=self.REW_CHECKPOINT)

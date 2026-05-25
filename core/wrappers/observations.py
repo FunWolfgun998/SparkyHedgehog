@@ -1,7 +1,6 @@
 import gymnasium as gym
 import numpy as np
 
-
 class SonicRAMWrapper(gym.Wrapper):
     def __init__(self, env, num_radar_objects=12):
         super().__init__(env)
@@ -86,35 +85,56 @@ class SonicRAMWrapper(gym.Wrapper):
 
         # --- 3. RADAR OGGETTI (Esclusi Boss e Sonic) ---
         radar_ai = []
-        MAX_DIST_CULLING = ((190 ** 2) + (180 ** 2)) ** 0.5  # Logica aggiornata
+        MAX_DIST_CULLING = ((190 ** 2) + (180 ** 2)) ** 0.5
 
-        real_ball_y = -9999
-        real_capsule_y = 9999
-        for i in range(1, 61):
-            temp_id = info.get(f'obj{i}_id', 0)
-            temp_y = info.get(f'obj{i}_y', 0)
-            if temp_id == 72 and temp_y > real_ball_y:
-                real_ball_y = temp_y
-            if temp_id == 62 and temp_y < real_capsule_y:
-                real_capsule_y = temp_y
-                
+        max_y_72 = -9999
+        id_Ball = -1
+        min_y_62 = 9999
+        id_Capsule = -1
+        id_Boss = -1
+
         for i in range(1, 61):
             o_id = info.get(f'obj{i}_id', 0)
             o_y = info.get(f'obj{i}_y', 0)
 
-            if o_id == 72 and o_y != real_ball_y: continue
-            if o_id == 62 and o_y != real_capsule_y: continue
+            # Wrecking Ball (Più in basso)
+            if o_id == 72:
+                if o_y > max_y_72:
+                    max_y_72 = o_y
+                    id_Ball = i
+
+            # Capsula (Più in alto)
+            if o_id == 62:
+                if o_y < min_y_62:
+                    min_y_62 = o_y
+                    id_Capsule = i
+
+            # Boss (Il primo che troviamo in memoria è la navicella madre)
+            if o_id in BOSS_IDS and id_Boss == -1:
+                id_Boss = i
+
+
+        for i in range(1, 61):
+            o_id = info.get(f'obj{i}_id', 0)
+
+            if o_id in [0, 1]: continue
+            # APPLICHIAMO I FILTRI: Via tutti i cloni inutili!
+            if o_id == 72 and i != id_Ball: continue
+            if o_id == 62 and i != id_Capsule: continue
+            if o_id in BOSS_IDS and i != id_Boss: continue
 
             dx = info.get(f'obj{i}_x', 0) - s_x
             dy = info.get(f'obj{i}_y', 0) - s_y
+
             dist = (dx ** 2 + dy ** 2) ** 0.5
             if dist > MAX_DIST_CULLING: continue
 
             # Flags di categoria
             l, e, ph, v, it, p = 0, 0, 0, 0, 0, 0
             score = 0
-
-            if o_id in CAT["LETHAL"]:
+            if o_id in BOSS_IDS:
+                score, e = 998, 1
+            elif o_id in CAT["LETHAL"]:
                 score, l = 100, 1
             elif o_id in CAT["ENEMIES"]:
                 score, e = 85, 1
@@ -129,7 +149,10 @@ class SonicRAMWrapper(gym.Wrapper):
             else:
                 continue
 
-            final_score = score * (1.0 - min(dist / MAX_DIST_CULLING, 1.0) * 0.6) * (1.0 if dx > -15 else 0.2)
+            if o_id in BOSS_IDS:
+                final_score = score
+            else:
+                final_score = score * (1.0 - min(dist / MAX_DIST_CULLING, 1.0) * 0.6) * (1.0 if dx > -15 else 0.2)
 
             radar_ai.append({
                 'id': o_id, 'dx': dx / 500, 'dy': dy / 500, 'dist': dist,

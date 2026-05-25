@@ -23,6 +23,7 @@ TEST_STATE = "GreenHillZone.Act1"
 
 # --- OPZIONI VIDEO ---
 SAVE_VIDEO = True
+SHOW_HUD = False
 os.makedirs(config.VIDEO_DIR, exist_ok=True)
 VIDEO_NAME = os.path.join(config.VIDEO_DIR, f"Test_{MODEL_NAME.replace('.zip', '')}.mp4")
 
@@ -60,6 +61,7 @@ def test():
     obs = env.reset()
     video_writer = None
     hud = SparkyHUD()
+    hud.enabled = SHOW_HUD
 
     print("\nPremere 'ESC' sulla finestra video per interrompere e salvare.")
 

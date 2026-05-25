@@ -120,7 +120,7 @@ class SonicRAMWrapper(gym.Wrapper):
             if o_id in [0, 1]: continue
             # APPLICHIAMO I FILTRI: Via tutti i cloni inutili!
             if o_id == 72 and i != id_Ball: continue
-            if o_id == 62 and i != id_Capsule: continue
+            if o_id == 62 and i != id_Capsule and boss_hp==0: continue
             if o_id in BOSS_IDS and i != id_Boss: continue
 
             dx = info.get(f'obj{i}_x', 0) - s_x
